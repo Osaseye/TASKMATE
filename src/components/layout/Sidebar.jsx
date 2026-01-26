@@ -9,11 +9,11 @@ const Sidebar = () => {
     };
 
     const navItems = [
-        { icon: 'dashboard', label: 'Dashboard', href: '/dashboard', active: true },
+        { icon: 'dashboard', label: 'Dashboard', href: '/dashboard' },
         { icon: 'search', label: 'Find Providers', href: '/customer/browse' },
-        { icon: 'favorite_border', label: 'Saved Providers', href: '#' },
-        { icon: 'payments', label: 'Payments', href: '#' },
-        { icon: 'settings', label: 'Settings', href: '#' },
+        { icon: 'list_alt', label: 'My Requests', href: '/customer/request-status' }, // Linking to status for now
+        { icon: 'favorite_border', label: 'Saved Providers', href: '/customer/saved' },
+        { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];
 
     return (

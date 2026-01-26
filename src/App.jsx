@@ -12,6 +12,10 @@ import Dashboard from './pages/customer/Dashboard';
 import PostRequest from './pages/customer/PostRequest';
 import BrowseProviders from './pages/customer/BrowseProviders';
 import ProviderProfile from './pages/customer/ProviderProfile';
+import RequestStatus from './pages/customer/RequestStatus';
+import ServiceReview from './pages/customer/ServiceReview';
+import Settings from './pages/customer/Settings';
+import SavedProviders from './pages/customer/SavedProviders';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -28,6 +32,10 @@ function AnimatedRoutes() {
         <Route path="/customer/post-request" element={<PostRequest />} />
         <Route path="/customer/browse" element={<BrowseProviders />} />
         <Route path="/customer/provider/:id" element={<ProviderProfile />} />
+        <Route path="/customer/request-status" element={<RequestStatus />} />
+        <Route path="/customer/service-review" element={<ServiceReview />} />
+        <Route path="/customer/settings" element={<Settings />} />
+        <Route path="/customer/saved" element={<SavedProviders />} />
       </Routes>
     </AnimatePresence>
   );

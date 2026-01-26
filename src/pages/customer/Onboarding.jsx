@@ -289,7 +289,7 @@ const Onboarding = () => {
                                 onClick={() => {
                                     setFormData({...formData, consent: true});
                                     // Simulate succes then redirect
-                                    setTimeout(() => handleSkip(), 1500); 
+                                    setTimeout(() => handleSkip(), 5000); 
                                     setStep(4); // Success State
                                 }}
                                 className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all"

@@ -8,6 +8,10 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 // Customer Pages
 import Onboarding from './pages/customer/Onboarding';
+import Dashboard from './pages/customer/Dashboard';
+import PostRequest from './pages/customer/PostRequest';
+import BrowseProviders from './pages/customer/BrowseProviders';
+import ProviderProfile from './pages/customer/ProviderProfile';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -20,6 +24,10 @@ function AnimatedRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/customer/onboarding" element={<Onboarding />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/customer/post-request" element={<PostRequest />} />
+        <Route path="/customer/browse" element={<BrowseProviders />} />
+        <Route path="/customer/provider/:id" element={<ProviderProfile />} />
       </Routes>
     </AnimatePresence>
   );

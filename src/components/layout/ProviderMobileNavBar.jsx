@@ -1,15 +1,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const MobileNavBar = () => {
+const ProviderMobileNavBar = () => {
     const location = useLocation();
     
+    // Using a simpler nav for mobile to avoid crowding
     const navItems = [
-        { icon: 'dashboard', label: 'Home', path: '/dashboard' },
-        { icon: 'search', label: 'Browse', path: '/customer/browse' },
-        { icon: 'add_circle', label: 'Post', path: '/customer/post-request', isMain: true },
-        { icon: 'list_alt', label: 'Requests', path: '/customer/requests' },
-        { icon: 'settings', label: 'Settings', path: '/customer/settings' },
+        { icon: 'dashboard', label: 'Home', path: '/provider/dashboard' },
+        { icon: 'assignment', label: 'Requests', path: '/provider/requests' },
+        { icon: 'work', label: 'My Jobs', path: '/provider/jobs', isMain: true },
+        { icon: 'payments', label: 'Earnings', path: '/provider/earnings' },
+        { icon: 'person', label: 'Profile', path: '/provider/profile' },
     ];
 
     return (
@@ -23,9 +24,9 @@ const MobileNavBar = () => {
                             <Link 
                                 key={item.label}
                                 to={item.path}
-                                className="mx-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-600 text-white shadow-lg shadow-green-600/30 transition-transform hover:scale-105 active:scale-95"
+                                className="mx-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform hover:scale-105 active:scale-95"
                             >
-                                <span className="material-icons-outlined text-2xl">{item.icon}</span>
+                                <span className="material-symbols-outlined text-2xl">{item.icon}</span>
                             </Link>
                         );
                     }
@@ -36,13 +37,13 @@ const MobileNavBar = () => {
                             to={item.path}
                             className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 ${
                                 isActive 
-                                    ? 'bg-green-100 text-green-700' 
+                                    ? 'bg-green-100 text-primary' 
                                     : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                             }`}
                         >
-                            <span className="material-icons-outlined text-xl">{item.icon}</span>
+                            <span className="material-symbols-outlined text-xl">{item.icon}</span>
                             {isActive && (
-                                <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-green-600"></span>
+                                <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-primary"></span>
                             )}
                         </Link>
                     );
@@ -52,4 +53,4 @@ const MobileNavBar = () => {
     );
 };
 
-export default MobileNavBar;
+export default ProviderMobileNavBar;

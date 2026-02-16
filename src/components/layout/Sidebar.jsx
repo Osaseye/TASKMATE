@@ -11,7 +11,7 @@ const Sidebar = () => {
     const navItems = [
         { icon: 'dashboard', label: 'Dashboard', href: '/dashboard' },
         { icon: 'search', label: 'Find Providers', href: '/customer/browse' },
-        { icon: 'list_alt', label: 'My Requests', href: '/customer/request-status' }, // Linking to status for now
+        { icon: 'list_alt', label: 'My Requests', href: '/customer/requests' }, 
         { icon: 'favorite_border', label: 'Saved Providers', href: '/customer/saved' },
         { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];

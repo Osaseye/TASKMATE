@@ -23,16 +23,23 @@ const Register = () => {
     setFormData(prev => ({ ...prev, userType: type }));
   }
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Register attempt:', formData);
-    // Determine flow based on user type
-    if (formData.userType === 'customer') {
-      navigate('/customer/onboarding');
-    } else {
-      // Placeholder for provider onboarding
-      navigate('/customer/onboarding'); 
-    }
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+        console.log('Register attempt:', formData);
+        setIsLoading(false);
+        // Determine flow based on user type
+        if (formData.userType === 'customer') {
+          navigate('/customer/onboarding');
+        } else {
+          navigate('/provider/onboarding/step-1'); 
+        }
+    }, 1500);
   };
 
   return (
@@ -89,26 +96,26 @@ const Register = () => {
           <div className="mt-6">
             {/* User Type Toggle */}
             <div className="flex p-1 bg-gray-100 rounded-lg mb-4">
-                <button
+                  <button
                     type="button"
                     onClick={() => handleUserTypeChange('customer')}
-                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                         formData.userType === 'customer' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-500 hover:text-gray-900'
+                        ? 'bg-white text-primary shadow-sm ring-1 ring-gray-100' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
                     }`}
-                >
+                  >
                     I need a service
                 </button>
                 <button
                     type="button"
                     onClick={() => handleUserTypeChange('provider')}
-                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                         formData.userType === 'provider' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-500 hover:text-gray-900'
+                        ? 'bg-white text-primary shadow-sm ring-1 ring-gray-100' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
                     }`}
-                >
+                  >
                     I offer services
                 </button>
             </div>
@@ -191,9 +198,20 @@ const Register = () => {
                 <div>
                   <button
                     type="submit"
-                    className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Create Account
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creating Account...
+                      </div>
+                    ) : (
+                      "Create Account"
+                    )}
                   </button>
                 </div>
             </form>

@@ -4,45 +4,8 @@ import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 
 const SavedProviders = () => {
-    // MOCK DATA
-    const savedProviders = [
-        {
-            id: 1,
-            name: "Chidubem Okafor",
-            service: "Expert Plumber",
-            rating: 4.9,
-            reviews: 124,
-            rate: "₦5,000",
-            image: "https://i.pravatar.cc/300?u=1",
-            location: "Lekki Phase 1",
-            verified: true,
-            isOnline: true
-        },
-        {
-            id: 3,
-            name: "Tobi Adebayo",
-            service: "Electrical Engineer",
-            rating: 4.8,
-            reviews: 89,
-            rate: "₦7,500",
-            image: "https://i.pravatar.cc/300?u=3",
-            location: "Ikeja GRA",
-            verified: true,
-            isOnline: false
-        },
-        {
-            id: 5,
-            name: "Sola David",
-            service: "Home Cleaner",
-            rating: 4.7,
-            reviews: 56,
-            rate: "₦3,500",
-            image: "https://i.pravatar.cc/300?u=5",
-            location: "Yaba, Lagos",
-            verified: true,
-            isOnline: true
-        }
-    ];
+    // MOCK DATA - EMPTY STATE
+    const savedProviders = [];
 
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">

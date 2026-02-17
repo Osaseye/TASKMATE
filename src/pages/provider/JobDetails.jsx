@@ -12,37 +12,27 @@ const JobDetails = () => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [uploadedInvoice, setUploadedInvoice] = useState(null);
     
-    // Initial Mock Data
     const [job, setJob] = useState({
-        id: id || 'TM-9021',
-        title: 'Plumbing Repair - Kitchen Sink',
-        status: 'In Progress',
-        statusCode: 'started', // on_way, arrived, started, parts, completed
+        id: id || 'TM----',
+        title: '---',
+        status: 'Pending',
+        statusCode: 'pending',
         customer: {
-            name: 'Chinedu Okafor',
-            rating: 4.8,
-            jobs: 24,
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDrv4vRS2hiNHUJozWi7RxLIotCZcYmy-bjGG1JVh6eXaEhPMVFwFgz0LkS4EaLA13I-wJw_fH-mWmfgP-DuK-70rzZdDuWxfT9TdyNWwOFhawUrI9j3to8z6Xg6-biOn3-pNEVbbQG2MrvLXevUMfxEcnhwOoMrZdIo8DLCNOArrCrhjP6CV3o67TUMztPX0G9d6I4c0sujMe1SOomLL55s4mm2eIbAjTi_o77i1DU51GlKLQnrOBx-gEL6zT-zRX2LT2OeGs08Lc'
+            name: '---',
+            rating: 0,
+            jobs: 0,
+            image: '' // Placeholder or empty
         },
         location: {
-            address: '14 Adetokunbo Ademola Street, Victoria Island, Lagos',
-            mapImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFTeCZ7ERuk69xFuqaOWgMZHcJlq_jTGdw1hCAHjmLK9UKdoSn_DTOZW_CDNskGAjcgbh2Lpnxkp8FMMQCcHHTfZ2d0Z2crmboOvvy9udEUQqkFYtHwCggfKOWBhn0KU4QYT633pPyMSCIRZQCfi98ZeL5y39AgsG4UvdWDOR5z58atJ1PRNqSts0tZ81fBA8XjphM7YBaqzyEYzY7pl_BXVA1WYal3eumBdICSCBPC8mxd9cSPURf55_yPShCDa6XsAy_G_BY2_g'
+            address: '---',
+            mapImage: '' // Placeholder or empty
         },
-        description: 'The pipe under the kitchen sink is leaking heavily when the tap is turned on. It seems like the connection joint has come loose or the washer is damaged. Need urgent fix as the water is causing damage to the cabinet wood. Please bring replacement parts for a standard PVC trap.',
-        photos: [
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuDXwmJ6euTu5DX3olit3O-kLKqo--NMSGy4sYK211R2j1EwnXfZsRylFYmJ1MeAgz8bBNK8WNp0lZaBfZEkewWba3kEHfS2AupEpNl1pV_Pghll9KGUVGmvGH4MdLQY4oVs8Y50Ra7I0nEzggoHM5Wfdch1qDdrYDgZe11kIiSMbv6rIk4sRFe-Dq9KnLnAB6S6LhKmvMJHmBSlXqoypyHXhqypDvLkqB-JFwNPPwTKdt6oW1XrgP6xyKgW8QH5rfHzDE8x5FD0BOc',
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuAofPukpDZ4DTiUCIg06uyUoifZQc81ec6sKYar7tIGq9SXLxr8tf4Wl_z3LCThYuDpvBxFxIQLyvByhJ3ER3WHn2AwoarZ9O_HKuMcjD4TzcqMpSOCKZb4R9FQOpxopHJv1Kj2uMOKJStTvt3Q2SvavDbXeDVk1B6SDuM5PTDXzkXqsu6g7Ts1TSaaV1BzVzsTRo-jEzbQEUkzPODVaYgqPTPQh9B9ccQ5qQ0JDK6gG8DEyCFNVi0lrUeHL_JDGJ_TzTeSE91TiMA',
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuBlf6b71KhIc4XE4XnlUuykfFEFblZc_SPreMIwlnewazI1e7A5aX4L5S4DN4ZOJ8HAK_bTQ-Q7NpuEsi2o255vJ_9M3B0ji0fo44vlfHY_fBH5TMsC-JaZHLh4jprATvk-YiMkt5WftvzBBkfeiNK0qh36bbOlIQY4gXQ0Im1GOzsxL8h9NvF7phk6xU_7uHFhgmrChUovM-O9fdyXqRno0eZcbPV3Qq_4dMWXEOzPnwuschzvp8wYtO-CqsDxEgeDxsqzgfNf8C8'
-        ],
-        timeline: [
-            { title: 'Request Accepted', time: 'Today, 10:00 AM', status: 'completed' },
-            { title: 'Provider En Route', time: 'Today, 10:30 AM', status: 'completed' },
-            { title: 'Work Started', time: '11:15 AM', status: 'current' },
-            { title: 'Job Completed', time: 'Pending', status: 'upcoming' },
-        ],
+        description: '---',
+        photos: [],
+        timeline: [],
         pricing: {
-            total: '₦12,500',
-            method: 'Cash / Transfer'
+            total: '₦0.00',
+            method: '---'
         }
     });
 

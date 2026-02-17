@@ -49,6 +49,9 @@ import AdminRequests from './pages/admin/Requests';
 import AdminSettings from './pages/admin/Settings';
 import AdminLogin from './pages/admin/Login';
 import AdminSupport from './pages/admin/Support';
+import AdminUserDetails from './pages/admin/UserDetails';
+import AdminRequestDetails from './pages/admin/RequestDetails';
+import AdminVerificationDetails from './pages/admin/VerificationDetails';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -97,8 +100,11 @@ function AnimatedRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:id" element={<AdminUserDetails />} />
           <Route path="requests" element={<AdminRequests />} />
+          <Route path="requests/:id" element={<AdminRequestDetails />} />
           <Route path="verifications" element={<AdminVerifications />} />
+          <Route path="verifications/:id" element={<AdminVerificationDetails />} />
           <Route path="commission" element={<AdminCommission />} />
           <Route path="support" element={<AdminSupport />} />
           <Route path="settings" element={<AdminSettings />} />

@@ -6,81 +6,8 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 const BrowseProviders = () => {
     const [priceRange, setPriceRange] = useState(50000);
 
-    // Mock data for providers
-    const providers = [
-        {
-            id: 1,
-            name: "Emmanuel Okoro",
-            role: "Master Plumber",
-            rating: 4.9,
-            reviews: 128,
-            experience: "8 Years",
-            price: "₦5,000",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFVuAkaYgVHvqB1eOTmc89qO7U3sfCPhLQXVum1tDH5gxFBEQQNdTrW6M7QNvZ2yPQRl2N6NHYm7aqJabmxt2j-4Ig12HhlJ1a2ipeyWMuCjc8hLNU5LMesuS4Rgh3mqawwVL7DaEz-AYTxL2CqQwyT77LC9D6ZVbtajza8xv4RVAE2mDpJrzRVTWxYTYPBYP_BeeKn8H9gUyZlC-_11qW-RgWrhIyUSZ4QrU1oN_cwFzAgEAbEywvnj115MdcVdo4_aqUfh1V9Us",
-            isOnline: true,
-            skills: ["Plumbing", "Pipe Fitting"]
-        },
-        {
-            id: 2,
-            name: "Aisha Bello",
-            role: "Home Cleaning Specialist",
-            rating: 4.8,
-            reviews: 84,
-            experience: "3 Years",
-            price: "₦3,500",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBUxqONCHc7ud0tvIJLa1En4H97XOAVWQvUIIeIY6b4JVrhqhFwUdmpzC7T2rG4ZRfmnujiJCEcm5FHkMHno_-iO_GoFfQywEq5dOKUQcAnjDMWnB6TDMpcIadNET83lSQQ2yS9026576CY45puXuyU3oKwkw2DsXOAaXvXIPIcug3y4uxG5WpQAubJXk8ZcOI55NeuYdhSfjSDPDgLS4vLsIgNcmPeNG6rHCgrQTvvdXbambJeP5Pdp0SYOf50N3pjW9pw6jMPjVc",
-            isOnline: false,
-            skills: ["Cleaning", "Organization"]
-        },
-        {
-            id: 3,
-            name: "Chinedu Eze",
-            role: "Electrical Engineer",
-            rating: 5.0,
-            reviews: 42,
-            experience: "10+ Years",
-            price: "₦7,000",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAKI3bT0PJgINtD673G1tSrnBxOnmPks0qgbCjOaaqjjqpvUv6Vy_cNeSexdgI5TSKxRnLjL9I6J8C2OYpD_3miTmaswtx2Vu8YMpJbig1sjgS-I-N3pD55sAQ-jiAsA6EkrRKM9SHXNUFwDwO_Cl0Ieu_YaxNpDYIQfhhNHX0JQ1tGkP_Ab0Q7U627plJpkAXi07JAZ2WDOjx21u1rQ_wum-6UCg1yKCn2w1eyrgCV1SeSrCjWR6FtVQnmXt4gzKb1RWb0TonkE1k",
-            isOnline: true,
-            skills: ["Wiring", "Installation"]
-        },
-        {
-            id: 4,
-            name: "Funmi Adebayo",
-            role: "Interior Painter",
-            rating: 4.7,
-            reviews: 56,
-            experience: "5 Years",
-            price: "₦4,000",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC3Q0ae8OoWH4G_faM3M6wpRGBrW-f6aTFeAYTAxc0dcODdCDLx0E-vs4wPKPJvpGCpU-T6NvetULJLrgn9UzTa2McDXrnB7AYB4bnw6egxaScBwwk6gluC2rmiYqLZkV-OazAWwRm6nZ-CRMY19u4q6SAiKy-qV8SkVC2DCsW_Uyw_2y4XtvgF-MOYsKpnlqmx93FGP967ZgvupK2tXC1abkm9sbJ7NnHU7BkQQlaBMF0BYt-KAFDkvzmBayQrFrZK_c-GEe1oVCk",
-            isOnline: false,
-            skills: ["Painting", "Decorating"]
-        },
-        {
-            id: 5,
-            name: "Yusuf Ibrahim",
-            role: "Carpenter",
-            rating: 4.6,
-            reviews: 31,
-            experience: "6 Years",
-            price: "₦6,500",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAm8cAmmZAvBgX1i6jGyWcTYdLJHOIRdgWnaP-3g6QxWF0xRP5DqCPz7p49szvReQH2WTrOkq769zTVCB1XQNtKFj0ixNK6RRIr8bjZGJXBQ2WmBvld0JdE3aw8DIcjvI9IPXWprjCpZE9xYXEnZQwlfxZxKyHFbsNZtTgDzF4a8Ff6VzDYRC0iJty_Go60WlJe5aHm4_80vQb3adQ1Bf_LYODiqQEYJc2PmgH9a7jHXT-I4XzaxaeR02alA9u_uZV-0TTfErmm9_4",
-            isOnline: true,
-            skills: ["Carpentry", "Furniture"]
-        },
-        {
-            id: 6,
-            name: "David Okafor",
-            role: "AC Repair & Service",
-            rating: 4.9,
-            reviews: 210,
-            experience: "12 Years",
-            price: "₦4,500",
-            image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDgG_Igu4qAYUapztc8PmPt7XnxkZi2KlLUSq9bkyLUX_rp22YkWjgERgiZPHZeiOw5ipVfAV1vlOTABPR1LTjIaQXA1QqfTkDzwlsLwBYAKmHwVqM_5yoVpCN446BK-O2DSAe_CydGtKNvejdhZB4UoydH0s4klG_biXAZzOERESW6BX1rbILn4V3MaufwhSURp4W1zoeNcxN_zM-uc7iFY62GckRUNpMdNLC0msnt2EYyiicwclgNQEvjcNKiyrt1ZWk8L9nnf6o",
-            isOnline: false,
-            skills: ["AC Repair", "Maintenance"]
-        }
-    ];
+    // Mock data for providers - EMPTY STATE
+    const providers = [];
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">

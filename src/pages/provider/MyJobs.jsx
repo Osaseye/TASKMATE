@@ -8,47 +8,9 @@ const MyJobs = () => {
     const [activeTab, setActiveTab] = useState('active');
 
     // Mock Data
-    const activeJobs = [
-        { 
-            id: 'JB-3011', 
-            title: 'Deep Home Cleaning', 
-            status: 'In Progress',
-            customer: 'Ngozi Obi',
-            location: 'Lekki Phase 1, Lagos',
-            description: 'Need a deep clean for a 3-bedroom apartment. Moving in next week.',
-            budget: '₦25,000',
-            date: 'Today, 2:00 PM',
-            icon: 'cleaning_services',
-            color: 'bg-blue-100 text-blue-600'
-        }
-    ];
+    const activeJobs = [];
 
-    const completedJobs = [
-        { 
-            id: 'JB-1045', 
-            title: 'Plumbing Repair', 
-            status: 'Completed',
-            customer: 'David West',
-            location: 'Surulere, Lagos',
-            description: 'Fixing a leaking pipe in the kitchen sink.',
-            budget: '₦12,000',
-            date: 'Yesterday',
-            icon: 'plumbing',
-            color: 'bg-cyan-100 text-cyan-600'
-        },
-        { 
-            id: 'JB-0922', 
-            title: 'Electrical Wiring', 
-            status: 'Completed',
-            customer: 'Sarah James',
-            location: 'Victoria Island, Lagos',
-            description: 'Rewiring the master bedroom lighting.',
-            budget: '₦45,000',
-            date: 'Feb 14, 2026',
-            icon: 'electric_bolt',
-            color: 'bg-orange-100 text-orange-600'
-        }
-    ];
+    const completedJobs = [];
 
     const jobs = activeTab === 'active' ? activeJobs : completedJobs;
 

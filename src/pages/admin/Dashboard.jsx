@@ -2,26 +2,17 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
-    // MOCK DATA for Admin Dashboard
+    // MOCK DATA for Admin Dashboard - EMPTY STATE
     const stats = [
-        { title: "Total Commission", value: "₦1,250,500", change: "+12.5%", icon: "monetization_on", color: "bg-green-500", trend: "up" },
-        { title: "Pending Commission", value: "₦45,200", change: "-2.4%", icon: "pending", color: "bg-orange-500", trend: "down" },
-        { title: "Total Tasks", value: "1,452", change: "+8.2%", icon: "assignment", color: "bg-blue-500", trend: "up" },
-        { title: "Active Providers", value: "348", change: "+5.1%", icon: "engineering", color: "bg-purple-500", trend: "up" },
+        { title: "Total Commission", value: "₦0.00", change: "0%", icon: "monetization_on", color: "bg-green-500", trend: "neutral" },
+        { title: "Pending Commission", value: "₦0.00", change: "0%", icon: "pending", color: "bg-orange-500", trend: "neutral" },
+        { title: "Total Tasks", value: "0", change: "0%", icon: "assignment", color: "bg-blue-500", trend: "neutral" },
+        { title: "Active Providers", value: "0", change: "0%", icon: "engineering", color: "bg-purple-500", trend: "neutral" },
     ];
 
-    const pendingVerifications = [
-        { id: 1, name: "Chinedu Okeke", service: "Plumbing", date: "2 mins ago", status: "Pending" },
-        { id: 2, name: "Grace Adebayo", service: "Catering", date: "1 hour ago", status: "Pending" },
-        { id: 3, name: "Emmanuel John", service: "Electrical", date: "3 hours ago", status: "Pending" },
-        { id: 4, name: "Fatima Yusuf", service: "Cleaning", date: "5 hours ago", status: "Pending" },
-    ];
+    const pendingVerifications = [];
 
-    const recentCommissions = [
-        { id: 'TXN-9921', provider: 'Tunde Fixes', amount: '₦500', job: 'Plumbing Repair', date: 'Oct 24, 2023', status: 'Paid' },
-        { id: 'TXN-9920', provider: 'Clean & Shine', amount: '₦1,500', job: 'House Cleaning', date: 'Oct 24, 2023', status: 'Pending' },
-        { id: 'TXN-9919', provider: 'Ibrahim Electric', amount: '₦800', job: 'Wiring Fix', date: 'Oct 23, 2023', status: 'Paid' },
-    ];
+    const recentCommissions = [];
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -134,11 +125,11 @@ const AdminDashboard = () => {
                             <p className="text-gray-400 text-sm mb-6">Commission collected this week vs target.</p>
                             
                             <div className="flex items-end gap-2 mb-2">
-                                <span className="text-4xl font-black">₦85k</span>
-                                <span className="text-sm text-gray-400 mb-1">/ ₦100k Goal</span>
+                                <span className="text-4xl font-black">₦0.00</span>
+                                <span className="text-sm text-gray-400 mb-1">/ ₦0.00 Goal</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                                <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: '0%' }}></div>
                             </div>
                             <button className="w-full bg-white text-gray-900 font-bold py-3 rounded-xl hover:bg-green-50 transition-colors text-xs uppercase tracking-wider">
                                 View Details
@@ -164,11 +155,11 @@ const AdminDashboard = () => {
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-500">Last Backup</span>
-                                <span className="text-gray-700">2 hours ago</span>
+                                <span className="text-gray-700">---</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-500">Active Users</span>
-                                <span className="text-gray-700 font-bold">1,204</span>
+                                <span className="text-gray-700 font-bold">0</span>
                             </div>
                         </div>
                     </div>

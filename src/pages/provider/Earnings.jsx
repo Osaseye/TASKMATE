@@ -5,15 +5,10 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 
 const Earnings = () => {
     // Mock Data
-    const transactions = [
-        { id: 'TRX-8829', description: 'Commission: Generator Repair', date: 'Oct 24, 2:30 PM', amount: '-₦1,500', type: 'debit', status: 'completed' },
-        { id: 'TRX-8828', description: 'Weekly Commission Payment', date: 'Oct 21, 9:00 AM', amount: '+₦5,000', type: 'credit', status: 'completed' },
-        { id: 'TRX-8825', description: 'Commission: House Wiring', date: 'Oct 20, 4:15 PM', amount: '-₦4,000', type: 'debit', status: 'completed' },
-        { id: 'TRX-8821', description: 'Commission: AC Maintenance', date: 'Oct 18, 11:00 AM', amount: '-₦800', type: 'debit', status: 'completed' },
-    ];
+    const transactions = [];
 
-    const weeklyData = [500, 1200, 800, 2000, 1500, 3000, 1000];
-    const maxVal = Math.max(...weeklyData);
+    const weeklyData = [0, 0, 0, 0, 0, 0, 0];
+    const maxVal = 1000; // Default max value
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
@@ -34,8 +29,8 @@ const Earnings = () => {
 
                 <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
                     
-                    {/* Access Warning Banner */}
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+                    {/* Access Warning Banner - HIDDEN FOR EMPTY STATE */}
+                    {/* <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
                         <span className="material-symbols-outlined text-orange-600">warning</span>
                         <div>
                             <h3 className="text-sm font-bold text-gray-900">Commission Payment Due</h3>
@@ -43,7 +38,7 @@ const Earnings = () => {
                                 Your outstanding commission balance is ₦6,300. Please clear your balance before it exceeds ₦10,000 to avoid temporary account suspension.
                             </p>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Balance Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -54,7 +49,7 @@ const Earnings = () => {
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm font-bold opacity-80 mb-1">Outstanding Commission</p>
-                                <h2 className="text-4xl font-black mb-6">₦6,300.00</h2>
+                                <h2 className="text-4xl font-black mb-6">₦0.00</h2>
                                 <button className="w-full py-3 bg-white text-red-600 font-bold rounded-xl shadow-md hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
                                     <span>Pay Commission</span>
                                     <span className="material-symbols-outlined text-lg">payments</span>
@@ -69,9 +64,9 @@ const Earnings = () => {
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm font-bold opacity-80 mb-1">Total Earnings (This Week)</p>
-                                <h2 className="text-4xl font-black mb-6">₦100,000.00</h2>
+                                <h2 className="text-4xl font-black mb-6">₦0.00</h2>
                                 <p className="text-sm font-medium opacity-80">
-                                    This confirms why your commission is ₦10,000 (10%).
+                                    Your commission is 0 (10%).
                                 </p>
                             </div>
                         </div>
@@ -81,7 +76,7 @@ const Earnings = () => {
                             <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1">Commissions Owed Trend</p>
                                 <div className="flex items-end gap-2">
-                                    <h2 className="text-3xl font-bold text-gray-900">₦10,000</h2>
+                                    <h2 className="text-3xl font-bold text-gray-900">₦0.00</h2>
                                 </div>
                             </div>
                             {/* Chart */}
@@ -90,7 +85,7 @@ const Earnings = () => {
                                     <div key={i} className="flex flex-col items-center gap-1 flex-1">
                                         <div 
                                             className="w-full bg-red-100 hover:bg-red-200 rounded-t-md transition-all duration-300"
-                                            style={{ height: `${(val / maxVal) * 100}%` }}
+                                            style={{ height: '0%' }}
                                         ></div>
                                         <span className="text-[10px] text-gray-400 font-medium">{'SMTWTFS'[i]}</span>
                                     </div>
@@ -114,9 +109,9 @@ const Earnings = () => {
                             </p>
                              <div className="mt-4 pt-4 border-t border-gray-100">
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: '63%' }}></div>
+                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: '0%' }}></div>
                                 </div>
-                                <p className="text-xs text-right mt-1 text-gray-500 font-medium">63% Used</p>
+                                <p className="text-xs text-right mt-1 text-gray-500 font-medium">0% Used</p>
                             </div>
                         </div>
                     </div>

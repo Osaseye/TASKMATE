@@ -9,18 +9,9 @@ const Dashboard = () => {
     const [openDropdown, setOpenDropdown] = useState(null);
 
     // Sample data for the table
-    const requests = [
-        { id: 'REQ-2024-001', service: 'Plumbing Repair', date: 'Oct 24, 2023', provider: 'Tunde Fixes', status: 'In Progress', amount: '₦15,000', avatar: 'https://i.pravatar.cc/150?u=1' },
-        { id: 'REQ-2024-002', service: 'House Cleaning', date: 'Oct 22, 2023', provider: 'Clean & Shine', status: 'Scheduled', amount: '₦12,500', avatar: 'https://i.pravatar.cc/150?u=2' },
-        { id: 'REQ-2024-003', service: 'Electrical Work', date: 'Oct 20, 2023', provider: 'Ibrahim Electric', status: 'Completed', amount: '₦8,000', avatar: 'https://i.pravatar.cc/150?u=3' },
-        { id: 'REQ-2024-004', service: 'Catering Service', date: 'Oct 18, 2023', provider: "Sarah's Kitchen", status: 'Cancelled', amount: '₦45,000', avatar: 'https://i.pravatar.cc/150?u=4' },
-    ];
+    const requests = [];
 
-    const recentActivity = [
-        { id: 1, text: 'Tunde Fixes arrived at your location', time: '2 mins ago', icon: 'location_on', color: 'bg-blue-100 text-blue-600' },
-        { id: 2, text: 'Payment of ₦15,000 confirmed', time: '1 hour ago', icon: 'payments', color: 'bg-green-100 text-green-600' },
-        { id: 3, text: 'Service scheduled with Clean & Shine', time: '5 hours ago', icon: 'event', color: 'bg-purple-100 text-purple-600' },
-    ];
+    const recentActivity = [];
 
     const toggleDropdown = (e, id) => {
         e.stopPropagation();
@@ -93,7 +84,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Active Tasks</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">3</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">0</h3>
                                         </div>
                                     </div>
                                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -102,7 +93,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Completed</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">12</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">0</h3>
                                         </div>
                                     </div>
                                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -111,7 +102,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Total Spent</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">₦145k</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
                                         </div>
                                     </div>
                                 </div>

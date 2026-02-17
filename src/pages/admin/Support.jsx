@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 
 const Support = () => {
-    // MOCK DATA for Support Tickets
-    const [tickets, setTickets] = useState([
-        { id: 'TKT-2023-001', user: 'Chidubem Okafor', role: 'Provider', type: 'Dispute', subject: 'Customer refused to pay', status: 'Open', date: 'Oct 24, 2023' },
-        { id: 'TKT-2023-002', user: 'Chioma Nnadi', role: 'Customer', type: 'Technical', subject: 'App crashes on login', status: 'Resolved', date: 'Oct 23, 2023' },
-        { id: 'TKT-2023-003', user: 'Grace Adebayo', role: 'Provider', type: 'Account', subject: 'Change bank details', status: 'In Progress', date: 'Oct 22, 2023' },
-    ]);
+    // MOCK DATA for Support Tickets - EMPTY STATE
+    const [tickets, setTickets] = useState([]);
 
     const handleStatusChange = (id, newStatus) => {
         setTickets(tickets.map(t => t.id === id ? { ...t, status: newStatus } : t));

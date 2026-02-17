@@ -11,19 +11,16 @@ const RequestDetails = () => {
 
     // Mock Data based on ID (In a real app, fetch from API)
     const request = {
-        id: id || 'REQ-001',
-        title: 'Generator Repair',
-        customer: 'Mr. David Okonkwo',
-        location: '12 Admiralty Way, Lekki Phase 1, Lagos',
-        distance: '2.5km away',
-        priceRange: '₦15,000 - ₦25,000',
-        description: 'My 5KVA generator is making a loud noise and smoking. Need someone to check the carburetor and maybe service it completely. Please bring necessary tools.',
-        urgency: 'High',
-        postedTime: '2 hours ago',
-        images: [
-            '/api/placeholder/400/300', 
-            '/api/placeholder/400/300'
-        ]
+        id: id || 'REQ----',
+        title: '---',
+        customer: '---',
+        location: '---',
+        distance: '---',
+        priceRange: '₦0 - ₦0',
+        description: '---',
+        urgency: '---',
+        postedTime: '---',
+        images: []
     };
 
     const breadcrumbItems = [

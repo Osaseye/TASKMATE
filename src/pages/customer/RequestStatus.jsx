@@ -14,10 +14,10 @@ const RequestStatus = () => {
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                                        Plumbing Repair - Kitchen Sink
+                                        ---
                                     </h1>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Order ID: #TM-84920 • Placed on Oct 24, 2023
+                                        Order ID: #TM---- • Placed on ---
                                     </p>
                                 </div>
                                 <div className="flex gap-3">

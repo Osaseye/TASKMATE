@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Requests = () => {
     // MOCK DATA for Admin Requests
-    const [requests, setRequests] = useState([
-        { id: 'REQ-101', customer: 'Tunde Bakare', provider: 'Chidubem Okafor', service: 'Plumbing', status: 'In Progress', date: 'Oct 24, 2023', amount: '₦15,000' },
-        { id: 'REQ-102', customer: 'Chioma Nnadi', provider: 'Grace Adebayo', service: 'Catering', status: 'Pending', date: 'Oct 25, 2023', amount: '₦45,000' },
-        { id: 'REQ-103', customer: 'Ahmed Lawal', provider: 'Unassigned', service: 'Electrical', status: 'Open', date: 'Oct 26, 2023', amount: '₦8,000' },
-        { id: 'REQ-104', customer: 'Sarah Musa', provider: 'Emmanuel John', service: 'Cleaning', status: 'Completed', date: 'Oct 20, 2023', amount: '₦12,000' },
-        { id: 'REQ-105', customer: 'John Doe', provider: 'Chidubem Okafor', service: 'Plumbing', status: 'Cancelled', date: 'Oct 18, 2023', amount: '₦5,000' },
-    ]);
+    const [requests, setRequests] = useState([]);
+    const navigate = useNavigate();
 
     const [filter, setFilter] = useState('All');
+
+    const filteredRequests = filter === 'All' ? requests : requests.filter(req => req.status === filter);
 
     const [selectedRequest, setSelectedRequest] = useState(null);
 
     const handleAction = (id, action) => {
         if (action === 'view') {
-            const req = requests.find(r => r.id === id);
-            setSelectedRequest(req);
+            navigate(`/admin/requests/${id}`);
         } else if (action === 'cancel') {
              // Handle cancel logic with toast...
              console.log(`Cancelling request ${id}`);
@@ -75,8 +72,12 @@ const Requests = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredRequests.map((req) => (
-                                <tr key={req.id} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-6 py-4 font-mono text-xs">{req.id}</td>
+                                <tr 
+                                    key={req.id} 
+                                    onClick={() => handleAction(req.id, 'view')}
+                                    className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                                >
+                                    <td className="px-6 py-4 font-mono text-xs group-hover:text-blue-600 font-bold transition-colors">{req.id}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{req.customer}</td>
                                     <td className="px-6 py-4 text-gray-600">
                                         {req.provider === 'Unassigned' ? (
@@ -93,20 +94,18 @@ const Requests = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right font-bold text-gray-900">{req.amount}</td>
                                     <td className="px-6 py-4 text-center">
-                                        <button 
-                                            onClick={() => handleAction(req.id, 'view')}
-                                            className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors"
-                                            title="View Details"
-                                        >
-                                            <span className="material-icons-outlined text-lg">visibility</span>
-                                        </button>
-                                        <button 
-                                            onClick={() => handleAction(req.id, 'cancel')}
-                                            className="text-red-400 hover:text-red-600 p-1 rounded-full transition-colors ml-2"
-                                            title="Force Cancel"
-                                        >
-                                            <span className="material-icons-outlined text-lg">cancel</span>
-                                        </button>
+                                        <div className="flex items-center justify-center">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAction(req.id, 'cancel');
+                                                }}
+                                                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                                title="Force Cancel"
+                                            >
+                                                <span className="material-icons-outlined text-lg">cancel</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -119,76 +118,6 @@ const Requests = () => {
                     </div>
                 )}
             </div>
-
-            {/* Request Details Modal */}
-            {selectedRequest && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scale-in">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-900">Request Details</h3>
-                            <button 
-                                onClick={() => setSelectedRequest(null)}
-                                className="text-gray-400 hover:text-gray-600 p-1 rounded-full"
-                            >
-                                <span className="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Request ID</p>
-                                    <p className="font-mono font-bold text-gray-900">{selectedRequest.id}</p>
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(selectedRequest.status)}`}>
-                                    {selectedRequest.status}
-                                </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Customer</p>
-                                    <p className="text-gray-900 font-medium">{selectedRequest.customer}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Provider</p>
-                                    <p className="text-gray-900 font-medium">{selectedRequest.provider}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Service</p>
-                                    <p className="text-gray-900">{selectedRequest.service}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Date</p>
-                                    <p className="text-gray-900">{selectedRequest.date}</p>
-                                </div>
-                            </div>
-                             
-                            <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                                <p className="font-bold text-gray-700">Total Amount</p>
-                                <p className="text-xl font-black text-gray-900">{selectedRequest.amount}</p>
-                            </div>
-
-                             {selectedRequest.status === 'In Progress' && (
-                                <div className="mt-4 p-4 bg-blue-50 text-blue-800 rounded-xl text-sm">
-                                    <p className="font-bold mb-1">Admin Info</p>
-                                    <p>This job is currently active. Monitor for completion or disputes.</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                            <button 
-                                onClick={() => setSelectedRequest(null)}
-                                className="px-4 py-2 bg-white text-gray-700 font-bold text-sm rounded-lg border border-gray-200 hover:bg-gray-50"
-                            >
-                                Close
-                            </button>
-                             <button className="px-4 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700">
-                                Contact Parties
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

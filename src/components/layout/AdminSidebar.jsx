@@ -35,7 +35,7 @@ const AdminSidebar = ({ isCollapsed, toggleCollapse }) => {
                 )}
             </div>
 
-            <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+            <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {menuItems.map((item) => (
                     <NavLink
                         key={item.path}

@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const Users = () => {
-    // MOCK DATA: List of Users
-    const [providers, setProviders] = useState([
-        { id: 1, name: 'Chidubem Okafor', role: 'Provider', service: 'Plumbing', rating: 4.8, status: 'Active', joined: 'Oct 2023', verified: true },
-        { id: 2, name: 'Grace Adebayo', role: 'Provider', service: 'Catering', rating: 4.5, status: 'Active', joined: 'Sep 2023', verified: true },
-        { id: 3, name: 'Emmanuel John', role: 'Provider', service: 'Electrical', rating: 3.9, status: 'Suspended', joined: 'Aug 2023', verified: false },
-        { id: 4, name: 'Sarah Musa', role: 'Provider', service: 'Cleaning', rating: 4.2, status: 'Pending', joined: 'Nov 2023', verified: false },
-    ]);
-
-    const [customers, setCustomers] = useState([
-        { id: 101, name: 'Tunde Bakare', role: 'Customer', requests: 12, spent: '₦45,000', status: 'Active', joined: 'Jan 2023' },
-        { id: 102, name: 'Chioma Nnadi', role: 'Customer', requests: 5, spent: '₦12,500', status: 'Active', joined: 'Mar 2023' },
-        { id: 103, name: 'Ahmed Lawal', role: 'Customer', requests: 0, spent: '₦0', status: 'Inactive', joined: 'Oct 2023' },
-    ]);
+    // MOCK DATA: List of Users - EMPTY STATE
+    const [providers, setProviders] = useState([]);
+    const [customers, setCustomers] = useState([]);
 
     const [activeTab, setActiveTab] = useState('Providers');
+    const navigate = useNavigate();
 
     const toggleStatus = (id, type) => {
         const userList = type === 'provider' ? providers : customers;
@@ -82,14 +74,18 @@ const Users = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {providers.map((user) => (
-                                    <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <tr 
+                                        key={user.id} 
+                                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                                        className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">
+                                                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                                     {user.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-gray-900 flex items-center gap-1">
+                                                    <div className="font-bold text-gray-900 flex items-center gap-1 group-hover:text-blue-600 transition-colors">
                                                         {user.name}
                                                         {user.verified && (
                                                             <span className="material-icons text-blue-500 text-[14px]" title="Verified Provider">verified</span>
@@ -121,65 +117,10 @@ const Users = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button 
-                                                onClick={() => toggleStatus(user.id, 'provider')}
-                                                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${
-                                                    user.status === 'Active' 
-                                                    ? 'text-red-600 border-red-200 hover:bg-red-50' 
-                                                    : 'text-green-600 border-green-200 hover:bg-green-50'
-                                                }`}
-                                            >
-                                                {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* Customers Table */}
-            {activeTab === 'Customers' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-500">
-                            <thead className="bg-gray-50 text-xs uppercase text-gray-400 font-bold border-b border-gray-100">
-                                <tr>
-                                    <th className="px-6 py-4">Name</th>
-                                    <th className="px-6 py-4 text-center">Requests</th>
-                                    <th className="px-6 py-4 text-right">Total Spent</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {customers.map((user) => (
-                                    <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">
-                                                    {user.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-gray-900">{user.name}</div>
-                                                    <div className="text-xs text-gray-400">Joined {user.joined}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center font-bold text-gray-700">{user.requests}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-gray-900">{user.spent}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                user.status === 'Active' ? 'bg-green-100 text-green-800' :
-                                                'bg-gray-100 text-gray-800'
-                                            }`}>
-                                                {user.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button 
-                                                onClick={() => toggleStatus(user.id, 'customer')}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleStatus(user.id, 'provider');
+                                                }}
                                                 className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${
                                                     user.status === 'Active' 
                                                     ? 'text-red-600 border-red-200 hover:bg-red-50' 

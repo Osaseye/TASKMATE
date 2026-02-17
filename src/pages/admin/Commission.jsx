@@ -2,18 +2,11 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 
 const Commission = () => {
-    // MOCK DATA: Providers who owe commission
-    const [outstandingCommissions, setOutstandingCommissions] = useState([
-        { id: 1, provider: "Tunde Fixes", owe: "₦5,000", jobs: 12, week: "Oct 16 - Oct 22", status: "Due" },
-        { id: 2, provider: "Clean & Shine", owe: "₦2,500", jobs: 5, week: "Oct 16 - Oct 22", status: "Due" },
-        { id: 3, provider: "Sarah's Kitchen", owe: "₦15,000", jobs: 25, week: "Oct 16 - Oct 22", status: "Overdue" },
-    ]);
+    // MOCK DATA: Providers who owe commission - EMPTY STATE
+    const [outstandingCommissions, setOutstandingCommissions] = useState([]);
 
-    // MOCK DATA: Confirmed payments
-    const history = [
-         { id: 'TXN-001', provider: "Ibrahim Electric", amount: "₦3,200", date: "Oct 23, 2023", method: "Bank Transfer" },
-         { id: 'TXN-002', provider: "Mary Cleaners", amount: "₦1,500", date: "Oct 22, 2023", method: "Bank Transfer" },
-    ];
+    // MOCK DATA: Confirmed payments - EMPTY STATE
+    const history = [];
 
     const markAsPaid = (id) => {
         // API call to update status
@@ -31,11 +24,11 @@ const Commission = () => {
                 <div className="flex gap-4">
                     <div className="bg-green-50 text-green-700 px-4 py-2 rounded-xl border border-green-100 shadow-sm">
                         <p className="text-xs uppercase font-bold tracking-wider">Collected (Oct)</p>
-                        <p className="text-xl font-black">₦245,000</p>
+                        <p className="text-xl font-black">₦0.00</p>
                     </div>
                     <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-xl border border-orange-100 shadow-sm">
                         <p className="text-xs uppercase font-bold tracking-wider">Pending</p>
-                        <p className="text-xl font-black">₦22,500</p>
+                        <p className="text-xl font-black">₦0.00</p>
                     </div>
                 </div>
             </div>

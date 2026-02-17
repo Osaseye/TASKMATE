@@ -8,44 +8,7 @@ const InboundRequests = () => {
     const [filter, setFilter] = useState('all');
 
     // Mock Data for New Requests
-    const requests = [
-        { 
-            id: 'JB-2942', 
-            title: 'Generator Repair', 
-            type: 'urgent',
-            customer: 'Tunde Bakare',
-            location: 'Ikeja GRA, Lagos',
-            description: "The generator is not starting. It makes a clicking sound but won't turnover.",
-            budget: '₦15,000',
-            posted: '20 mins ago',
-            icon: 'electric_bolt',
-            color: 'bg-orange-100 text-orange-600'
-        },
-        { 
-            id: 'JB-3011', 
-            title: 'Deep Home Cleaning', 
-            type: 'standard',
-            customer: 'Ngozi Obi',
-            location: 'Lekki Phase 1, Lagos',
-            description: 'Need a deep clean for a 3-bedroom apartment. Moving in next week.',
-            budget: '₦25,000',
-            posted: '2 hours ago',
-            icon: 'cleaning_services',
-            color: 'bg-blue-100 text-blue-600'
-        },
-        { 
-            id: 'JB-2884', 
-            title: 'AC Maintenance Service', 
-            type: 'standard',
-            customer: 'Chinedu Okeke',
-            location: 'Yaba, Lagos',
-            description: 'Regular servicing for two split AC units.',
-            budget: '₦8,000',
-            posted: '4 hours ago',
-            icon: 'ac_unit',
-            color: 'bg-gray-100 text-gray-600'
-        }
-    ];
+    const requests = [];
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">

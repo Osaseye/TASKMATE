@@ -7,64 +7,8 @@ const MyRequests = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('All');
 
-    // MOCK DATA
-    const allRequests = [
-        {
-            id: 'REQ-2849',
-            service: 'Plumbing Repair',
-            provider: 'Tunde Fixes',
-            providerImg: 'https://i.pravatar.cc/150?u=1',
-            date: 'Oct 24, 2023',
-            time: '02:30 PM',
-            amount: '₦15,000',
-            status: 'In Progress',
-            category: 'Active'
-        },
-        {
-            id: 'REQ-2848',
-            service: 'House Cleaning',
-            provider: 'Clean & Shine',
-            providerImg: 'https://i.pravatar.cc/150?u=2',
-            date: 'Oct 22, 2023',
-            time: '09:00 AM',
-            amount: '₦12,500',
-            status: 'Scheduled',
-            category: 'Active'
-        },
-        {
-            id: 'REQ-2845',
-            service: 'Electrical Work',
-            provider: 'Ibrahim Electric',
-            providerImg: 'https://i.pravatar.cc/150?u=3',
-            date: 'Oct 20, 2023',
-            time: '11:15 AM',
-            amount: '₦8,000',
-            status: 'Completed',
-            category: 'Completed'
-        },
-        {
-            id: 'REQ-2841',
-            service: 'Catering Service',
-            provider: "Sarah's Kitchen",
-            providerImg: 'https://i.pravatar.cc/150?u=4',
-            date: 'Oct 18, 2023',
-            time: '04:00 PM',
-            amount: '₦45,000',
-            status: 'Cancelled',
-            category: 'Cancelled'
-        },
-        {
-            id: 'REQ-2839',
-            service: 'AC Maintenance',
-            provider: 'Cool Breeze',
-            providerImg: 'https://i.pravatar.cc/150?u=5',
-            date: 'Oct 15, 2023',
-            time: '10:00 AM',
-            amount: '₦10,000',
-            status: 'Completed',
-            category: 'Completed'
-        },
-    ];
+    // MOCK DATA - EMPTY STATE
+    const allRequests = [];
 
     const getStatusColor = (status) => {
         switch (status) {

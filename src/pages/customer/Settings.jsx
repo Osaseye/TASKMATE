@@ -113,13 +113,13 @@ const Settings = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Full Name</label>
-                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="text" defaultValue="Segun Adebayo"/>
+                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="text" placeholder="Enter your full name"/>
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Email Address</label>
                                             <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed flex items-center gap-2">
                                                 <span className="material-icons-outlined text-sm">lock</span>
-                                                segun@example.com
+                                                masked@example.com
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-2">
@@ -129,12 +129,12 @@ const Settings = () => {
                                                     <span className="text-lg">🇳🇬</span>
                                                     <span className="text-sm font-medium">+234</span>
                                                 </div>
-                                                <input className="w-full pl-24 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="tel" defaultValue="8031234567"/>
+                                                <input className="w-full pl-24 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="tel" placeholder="800 000 0000"/>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-2 md:col-span-2">
                                             <label className="text-sm font-semibold text-gray-700">Address</label>
-                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" placeholder="Enter your address" type="text" defaultValue="15b Admiralty Way, Lekki Phase 1, Lagos"/>
+                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" placeholder="Enter your address" type="text" />
                                         </div>
                                     </div>
                                 </div>

@@ -10,15 +10,15 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   const [profile, setProfile] = useState({
-    name: 'Ayomide Johnson',
-    email: 'ayomide.johnson@example.com',
-    phone: '+234 812 345 6789',
-    location: 'Lekki Phase 1, Lagos',
-    bio: 'Experienced electrical engineer with over 7 years of expertise in residential and commercial installations. I pristine services and prioritize safety.',
-    rating: 4.8,
-    jobsCompleted: 142,
-    memberSince: 'August 2021',
-    avatar: 'https://i.pravatar.cc/150?u=ayomide',
+    name: '---',
+    email: '---',
+    phone: '---',
+    location: '---',
+    bio: '---',
+    rating: 0,
+    jobsCompleted: 0,
+    memberSince: '---',
+    avatar: '', // Placeholder
     banner: null
   });
 

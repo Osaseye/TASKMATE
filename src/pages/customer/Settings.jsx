@@ -1,46 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
+import { storage, auth, db } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { reauthenticateWithCredential, updatePassword, EmailAuthProvider } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Settings = () => {
+    const { currentUser, updateUserProfile } = useAuth();
     const [activeTab, setActiveTab] = useState('Profile');
     const [isLoading, setIsLoading] = useState(false);
+    const fileInputRef = useRef(null);
 
     // Form states
+    const [profileForm, setProfileForm] = useState({
+        displayName: '',
+        phoneNumber: '',
+        address: '',
+        photoURL: ''
+    });
+
+    useEffect(() => {
+        if (currentUser) {
+            setProfileForm({
+                displayName: currentUser.displayName || '',
+                phoneNumber: currentUser.phoneNumber || '',
+                address: currentUser.location || '', // Assuming location is stored as address
+                photoURL: currentUser.photoURL || ''
+            });
+        }
+    }, [currentUser]);
+
     const [securityForm, setSecurityForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
     const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
 
-    const handleSaveProfile = () => {
-        setIsLoading(true);
-        setTimeout(() => {
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File size must be less than 5MB");
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const storageRef = ref(storage, `profile_pictures/${currentUser.uid}`);
+            await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(storageRef);
+            
+            await updateUserProfile({ photoURL: downloadURL });
+            setProfileForm(prev => ({ ...prev, photoURL: downloadURL }));
+            toast.success("Profile picture updated!");
+        } catch (error) {
+            console.error("Error uploading photo:", error);
+            toast.error("Failed to upload photo");
+        } finally {
             setIsLoading(false);
-            toast.success("Profile updated successfully");
-        }, 1000);
+        }
     };
 
-    const handleSaveSecurity = (e) => {
+    const handleSaveProfile = async () => {
+        if (!profileForm.displayName) {
+            toast.error("Name cannot be empty");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await updateUserProfile({
+                displayName: profileForm.displayName,
+                phoneNumber: profileForm.phoneNumber,
+                location: profileForm.address
+            });
+            toast.success("Profile updated successfully");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update profile");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSaveSecurity = async (e) => {
         e.preventDefault();
+        
         if (securityForm.newPassword !== securityForm.confirmPassword) {
             toast.error("Passwords do not match");
             return;
         }
+
+        if (securityForm.newPassword.length < 8) {
+            toast.error("Password must be at least 8 characters long");
+            return;
+        }
+
+        const user = auth.currentUser;
+        if (!user) {
+            toast.error("You must be logged in to change your password");
+            return;
+        }
+
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            toast.success("Security settings updated");
+
+        try {
+            // Re-authenticate
+            const credential = EmailAuthProvider.credential(user.email, securityForm.currentPassword);
+            await reauthenticateWithCredential(user, credential);
+
+            // Update Password
+            await updatePassword(user, securityForm.newPassword);
+
+            toast.success("Password updated successfully");
             setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        }, 1000);
+
+        } catch (error) {
+            console.error("Error updating password:", error);
+            if (error.code === 'auth/wrong-password') {
+                toast.error("Incorrect current password");
+            } else if (error.code === 'auth/weak-password') {
+                toast.error("Password is too weak");
+            } else if (error.code === 'auth/too-many-requests') {
+                toast.error("Too many attempts. Try again later.");
+            } else {
+                toast.error("Failed to update password: " + error.message);
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleSendSupport = (e) => {
+    const handleSendSupport = async (e) => {
         e.preventDefault();
+        if (!supportForm.subject || !supportForm.message) {
+            toast.error("Please fill in all fields");
+            return;
+        }
+        
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            await addDoc(collection(db, "support_tickets"), {
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                userName: currentUser.displayName,
+                userRole: 'customer',
+                subject: supportForm.subject,
+                message: supportForm.message,
+                status: 'Open',
+                createdAt: serverTimestamp()
+            });
+            
             toast.success("Message sent to support team");
             setSupportForm({ subject: '', message: '' });
-        }, 1000);
+        } catch (error) {
+            console.error("Error sending support message:", error);
+            toast.error("Failed to send message. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const renderTabs = () => (
@@ -86,18 +205,19 @@ const Settings = () => {
                                 {/* Profile Picture Section */}
                                 <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-gray-200 rounded-2xl shadow-sm gap-4">
                                     <div className="flex items-center gap-6">
-                                        <div className="relative group cursor-pointer">
-                                            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4gAl8ygivGzLV7fguS8_HqLj4Nz8L6xulfQanmWwRILtbM7AGp_NgwIsDJTevzZC37joVIxncbKh1hQ3p46OohQQKX70g-Dk9ta5N4y4_mLayLFl7vMKCRxYsjxtJCdqL_wV0li03JRubJX_fd8xTOHlw3hbtwoOkhRbM5muqwGY024FFkF4Ce_jaa6he7FAo4QXOIYQVmMrLehG_oZBzG8BHMDJAJ43Mlz4_SOhPXXfzT2w_Hgxv6ShHVYaLCbeDxiz3DyS0MS4" alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity" />
+                                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
+                                            <img src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity" />
                                             <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-green-600">
                                                 <span className="material-icons-outlined text-lg">edit</span>
                                             </div>
+                                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold">Profile Photo</h3>
-                                            <p className="text-sm text-gray-500">JPG, GIF or PNG. Max size of 800KB</p>
+                                            <p className="text-sm text-gray-500">JPG, GIF or PNG. Max size of 5MB</p>
                                         </div>
                                     </div>
-                                    <button className="px-5 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition-all">
+                                    <button onClick={() => fileInputRef.current.click()} className="px-5 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition-all">
                                         Upload New
                                     </button>
                                 </div>
@@ -113,28 +233,42 @@ const Settings = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Full Name</label>
-                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="text" placeholder="Enter your full name"/>
+                                            <input 
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                type="text" 
+                                                placeholder="Enter your full name"
+                                                value={profileForm.displayName || ''}
+                                                onChange={(e) => setProfileForm({...profileForm, displayName: e.target.value})}
+                                            />
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Email Address</label>
                                             <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed flex items-center gap-2">
                                                 <span className="material-icons-outlined text-sm">lock</span>
-                                                masked@example.com
+                                                {currentUser?.email || 'masked@example.com'}
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Phone Number</label>
                                             <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 flex items-center pl-4 gap-2 pointer-events-none border-r border-gray-200 pr-2 mr-2">
-                                                    <span className="text-lg">🇳🇬</span>
-                                                    <span className="text-sm font-medium">+234</span>
-                                                </div>
-                                                <input className="w-full pl-24 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" type="tel" placeholder="800 000 0000"/>
+                                                <input 
+                                                    className="w-full pl-4 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                    type="tel" 
+                                                    placeholder="+234 800 000 0000"
+                                                    value={profileForm.phoneNumber || ''}
+                                                    onChange={(e) => setProfileForm({...profileForm, phoneNumber: e.target.value})}
+                                                />
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-2 md:col-span-2">
                                             <label className="text-sm font-semibold text-gray-700">Address</label>
-                                            <input className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" placeholder="Enter your address" type="text" />
+                                            <input 
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                placeholder="Enter your address" 
+                                                type="text" 
+                                                value={profileForm.address || ''}
+                                                onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -142,7 +276,8 @@ const Settings = () => {
                                 <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
                                     <button 
                                         onClick={handleSaveProfile}
-                                        className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+                                        disabled={isLoading}
+                                        className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
                                     >
                                         {isLoading ? 'Saving...' : 'Save Changes'}
                                     </button>

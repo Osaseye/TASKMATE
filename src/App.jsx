@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
+import { ProviderOnboardingProvider } from './context/ProviderOnboardingContext';
 import Landing from './pages/public/Landing'
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -53,6 +54,8 @@ import AdminUserDetails from './pages/admin/UserDetails';
 import AdminRequestDetails from './pages/admin/RequestDetails';
 import AdminVerificationDetails from './pages/admin/VerificationDetails';
 
+import ProtectedRoute from './components/ProtectedRoute';
+
 function AnimatedRoutes() {
   const location = useLocation();
   
@@ -63,31 +66,35 @@ function AnimatedRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/customer/onboarding" element={<Onboarding />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/customer/post-request" element={<PostRequest />} />
-        <Route path="/customer/browse" element={<BrowseProviders />} />
-        <Route path="/customer/provider/:id" element={<ProviderProfile />} />
-        <Route path="/customer/requests" element={<MyRequests />} />
-        <Route path="/customer/request-status" element={<RequestStatus />} />
-        <Route path="/customer/service-review" element={<ServiceReview />} />
-        <Route path="/customer/settings" element={<Settings />} />
-        <Route path="/customer/saved" element={<SavedProviders />} />
+        
+        {/* Customer Routes */}
+        <Route path="/customer/onboarding" element={<ProtectedRoute allowedRoles={['customer']}><Onboarding /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><Dashboard /></ProtectedRoute>} />
+        <Route path="/customer/post-request" element={<ProtectedRoute allowedRoles={['customer']}><PostRequest /></ProtectedRoute>} />
+        <Route path="/customer/browse" element={<ProtectedRoute allowedRoles={['customer']}><BrowseProviders /></ProtectedRoute>} />
+        <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
+        <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
+        <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
+        <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
+        <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
+        <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
 
         {/* Provider Onboarding Routes */}
-        <Route path="/provider/onboarding" element={<Navigate to="/provider/onboarding/step-1" replace />} />
-        <Route path="/provider/onboarding/step-1" element={<ProfessionalInfo />} />
-        <Route path="/provider/onboarding/step-2" element={<ServiceDetails />} />
-        <Route path="/provider/onboarding/step-3" element={<IdentityVerification />} />
-        <Route path="/provider/onboarding/status" element={<OnboardingStatus />} />
-        <Route path="/provider/dashboard" element={<ProviderDashboard />} />
-        <Route path="/provider/requests" element={<Requests />} />
-        <Route path="/provider/jobs" element={<MyJobs />} />
-        <Route path="/provider/jobs/:id" element={<JobDetails />} />
-        <Route path="/provider/requests/:id" element={<RequestDetails />} />
-        <Route path="/provider/earnings" element={<Earnings />} />
-        <Route path="/provider/profile" element={<MyProfile />} />
-        <Route path="/provider/settings" element={<ProviderSettings />} />
+        <Route path="/provider/onboarding" element={<ProtectedRoute allowedRoles={['provider']}><Navigate to="/provider/onboarding/step-1" replace /></ProtectedRoute>} />
+        <Route path="/provider/onboarding/step-1" element={<ProtectedRoute allowedRoles={['provider']}><ProfessionalInfo /></ProtectedRoute>} />
+        <Route path="/provider/onboarding/step-2" element={<ProtectedRoute allowedRoles={['provider']}><ServiceDetails /></ProtectedRoute>} />
+        <Route path="/provider/onboarding/step-3" element={<ProtectedRoute allowedRoles={['provider']}><IdentityVerification /></ProtectedRoute>} />
+        <Route path="/provider/onboarding/status" element={<ProtectedRoute allowedRoles={['provider']}><OnboardingStatus /></ProtectedRoute>} />
+
+        {/* Provider Routes */}
+        <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
+        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['provider']}><Requests /></ProtectedRoute>} />
+        <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><RequestDetails /></ProtectedRoute>} />
+        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><MyJobs /></ProtectedRoute>} />
+        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><JobDetails /></ProtectedRoute>} />
+        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><Earnings /></ProtectedRoute>} />
+        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><MyProfile /></ProtectedRoute>} />
+        <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />
         <Route path="/provider/settings/password" element={<ChangePassword />} />
         <Route path="/provider/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -118,7 +125,9 @@ function App() {
   return (
     <Router>  
       <Toaster position="top-right" richColors />
-      <AnimatedRoutes />
+      <ProviderOnboardingProvider>
+        <AnimatedRoutes />
+      </ProviderOnboardingProvider>
     </Router>
   )
 }

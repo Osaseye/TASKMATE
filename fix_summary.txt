@@ -1,0 +1,8 @@
+The issue is that there were no routes defined for the dynamic provider pages.
+When you clicked on a job or request, the URL changed to `/provider/jobs/<ID>` or `/provider/requests/<ID>`, but the Router didn't know which component to render for those paths, resulting in a blank page and the console warning.
+
+I have updated `App.jsx` to include:
+1.  `<Route path="/provider/requests/:id" ... />` -> This will now load `RequestDetails.jsx`.
+2.  `<Route path="/provider/jobs/:id" ... />` -> This will now load `JobDetails.jsx`.
+
+The detailed view for your jobs and requests should now work correctly.

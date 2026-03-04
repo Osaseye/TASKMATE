@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import Confetti from 'react-confetti';
 import 'leaflet/dist/leaflet.css';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
+import { storage } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Fix for Leaflet default icon issues in React
 import L from 'leaflet';
@@ -19,19 +23,85 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+function ChangeView({ center }) {
+  const map = useMap();
+  map.setView(center);
+  return null;
+}
+
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { updateUserProfile, currentUser } = useAuth();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  const [previewUrl, setPreviewUrl] = useState(currentUser?.photoURL || null);
+  const [mapCenter, setMapCenter] = useState([6.5244, 3.3792]);
+
   const [formData, setFormData] = useState({
-    displayName: '',
+    displayName: currentUser?.displayName || '',
     location: '',
     photo: null,
     selectedCategories: [],
     consent: false,
   });
 
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    toast.loading('Getting your location...', { id: 'locationPromise' });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setMapCenter([latitude, longitude]);
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          
+          let locationName = '';
+          if (data && data.address) {
+            locationName = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || data.display_name;
+          } else {
+             locationName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          }
+
+          setFormData(prev => ({ ...prev, location: locationName }));
+          toast.success('Location updated!', { id: 'locationPromise' });
+        } catch (error) {
+          console.error('Error fetching address:', error);
+          setFormData(prev => ({ ...prev, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` }));
+          toast.success('Location coordinates updated!', { id: 'locationPromise' });
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        toast.error('Unable to retrieve your location', { id: 'locationPromise' });
+      }
+    );
+  };
+
   const handleNext = () => {
     setStep((prev) => prev + 1);
+  };
+  
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size must be less than 5MB");
+        return;
+      }
+      setFormData(prev => ({ ...prev, photo: file }));
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
   const handleSkip = () => {
@@ -120,10 +190,20 @@ const Onboarding = () => {
                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                     {/* Photo Upload */}
                     <div className="p-8 border-b border-gray-100 flex flex-col items-center">
-                        <div className="relative group cursor-pointer mb-4">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/*"
+                        />
+                        <div 
+                            className="relative group cursor-pointer mb-4"
+                            onClick={() => fileInputRef.current.click()}
+                        >
                             <div 
                                 className="w-32 h-32 rounded-full bg-cover bg-center border-4 border-green-100 group-hover:border-primary transition-colors"
-                                style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuABplLBk7icrBibPhz9f8PO7ktp9McM1pVa3-mCWbz3VtFlN67AQ7ew3JqmxAjh-pM0_gwIvyCAAhjQcOT2XR4IgM3pbDSDoTfk-TEUx4nkAxJLRhXLbRVjZUC_Zv6Q0C2OrebB_fGQ-insqhVJ29PTK670Irho2dzUrTWR65_TnTxYUwsDN5N2IieMThEaHKop5fCGdexGeaigKHPGBbXv_Yr5646Xkjwvql2LN2_eF_Htr4oQNx5IyC-wMw9d5UpnAPwEEOtrtAw")' }}
+                                style={{ backgroundImage: `url("${previewUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuABplLBk7icrBibPhz9f8PO7ktp9McM1pVa3-mCWbz3VtFlN67AQ7ew3JqmxAjh-pM0_gwIvyCAAhjQcOT2XR4IgM3pbDSDoTfk-TEUx4nkAxJLRhXLbRVjZUC_Zv6Q0C2OrebB_fGQ-insqhVJ29PTK670Irho2dzUrTWR65_TnTxYUwsDN5N2IieMThEaHKop5fCGdexGeaigKHPGBbXv_Yr5646Xkjwvql2LN2_eF_Htr4oQNx5IyC-wMw9d5UpnAPwEEOtrtAw'}")` }}
                             ></div>
                             <div className="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white">
                                 <span className="material-icons-outlined text-sm block">add_a_photo</span>
@@ -149,7 +229,10 @@ const Onboarding = () => {
                         <div>
                             <div className="flex justify-between items-center mb-2">
                                 <label className="block text-sm font-bold text-gray-900">Primary Location</label>
-                                <button className="text-primary text-xs font-bold flex items-center hover:underline">
+                                <button 
+                                    onClick={handleUseCurrentLocation}
+                                    className="text-primary text-xs font-bold flex items-center hover:underline"
+                                >
                                     <span className="material-icons-outlined text-sm mr-1">my_location</span>
                                     Use Current Location
                                 </button>
@@ -166,16 +249,17 @@ const Onboarding = () => {
                             </div>
                             <div className="h-64 w-full bg-gray-200 rounded-b-xl overflow-hidden relative border-x border-b border-gray-200 z-0">
                                 <MapContainer 
-                                    center={[6.5244, 3.3792]} 
+                                    center={mapCenter} 
                                     zoom={13} 
                                     scrollWheelZoom={false}
                                     style={{ height: '100%', width: '100%' }}
                                 >
+                                    <ChangeView center={mapCenter} />
                                     <TileLayer
                                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     />
-                                    <Marker position={[6.5244, 3.3792]}>
+                                    <Marker position={mapCenter}>
                                         <Popup>
                                             Your Location
                                         </Popup>
@@ -286,15 +370,40 @@ const Onboarding = () => {
                         
                         <div className="space-y-4">
                             <button 
-                                onClick={() => {
-                                    setFormData({...formData, consent: true});
-                                    // Simulate succes then redirect
-                                    setTimeout(() => handleSkip(), 5000); 
-                                    setStep(4); // Success State
+                                onClick={async () => {
+                                    setLoading(true);
+                                    try {
+                                        let photoURL = currentUser?.photoURL;
+                                        
+                                        if (formData.photo) {
+                                            const storageRef = ref(storage, `profile_pictures/${currentUser.uid}`);
+                                            await uploadBytes(storageRef, formData.photo);
+                                            photoURL = await getDownloadURL(storageRef);
+                                        }
+
+                                        setFormData({...formData, consent: true});
+                                        // Save to Firebase
+                                        await updateUserProfile({
+                                            displayName: formData.displayName,
+                                            location: formData.location,
+                                            preferences: formData.selectedCategories,
+                                            photoURL: photoURL,
+                                            onboardingCompleted: true
+                                        });
+                                        
+                                        setStep(4); // Success State
+                                        setTimeout(() => navigate('/dashboard'), 3000); 
+                                    } catch (error) {
+                                        console.error(error);
+                                        toast.error("Failed to save profile");
+                                    } finally {
+                                        setLoading(false);
+                                    }
                                 }}
-                                className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all"
+                                disabled={loading}
+                                className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all disabled:opacity-50"
                             >
-                                Agree & Finish
+                                {loading ? 'Saving...' : 'Agree & Finish'}
                             </button>
                              <button onClick={() => setStep(2)} className="text-sm text-gray-400 hover:text-gray-600">
                                 Back

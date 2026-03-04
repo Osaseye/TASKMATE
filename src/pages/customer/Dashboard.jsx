@@ -1,17 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
+import { format } from 'date-fns';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
+    const { requests, getProviders } = useData();
     const [activeTab, setActiveTab] = useState('All');
     const [openDropdown, setOpenDropdown] = useState(null);
+    const [recommendedProviders, setRecommendedProviders] = useState([]);
 
-    // Sample data for the table
-    const requests = [];
+    useEffect(() => {
+        const fetchRecommended = async () => {
+            const allProviders = await getProviders('All');
+            // Simple recommendation: Randomize or slice top 4 for now
+            // In a real app, match with user's past request categories
+            setRecommendedProviders(allProviders.slice(0, 4));
+        };
+        fetchRecommended();
+    }, [getProviders]);
 
-    const recentActivity = [];
+    // Filter requests
+    const filteredRequests = activeTab === 'All' 
+        ? requests 
+        : requests.filter(req => req.status === activeTab);
+    
+    // Derived stats
+    const activeTasksCount = requests.filter(r => r.status === 'In Progress').length;
+    const completedTasksCount = requests.filter(r => r.status === 'Completed').length;
+    const pendingTasksCount = requests.filter(r => r.status === 'Pending').length;
 
     const toggleDropdown = (e, id) => {
         e.stopPropagation();
@@ -19,12 +40,8 @@ const Dashboard = () => {
     };
 
     const handleRowClick = (id) => {
-        navigate(`/customer/request-status`);
+        navigate(`/customer/request-status/${id}`);
     };
-
-    const filteredRequests = activeTab === 'All' 
-        ? requests 
-        : requests.filter(req => req.status === activeTab);
 
     return (
         <div className="flex min-h-screen bg-[#F8F9FA] font-sans text-gray-900" onClick={() => setOpenDropdown(null)}>
@@ -42,7 +59,7 @@ const Dashboard = () => {
                          <button className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-600">
                              <span className="material-icons-outlined text-xl">notifications</span>
                          </button>
-                         <img alt="Profile" className="h-8 w-8 rounded-full object-cover border border-gray-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4gAl8ygivGzLV7fguS8_HqLj4Nz8L6xulfQanmWwRILtbM7AGp_NgwIsDJTevzZC37joVIxncbKh1hQ3p46OohQQKX70g-Dk9ta5N4y4_mLayLFl7vMKCRxYsjxtJCdqL_wV0li03JRubJX_fd8xTOHlw3hbtwoOkhRbM5muqwGY024FFkF4Ce_jaa6he7FAo4QXOIYQVmMrLehG_oZBzG8BHMDJAJ43Mlz4_SOhPXXfzT2w_Hgxv6ShHVYaLCbeDxiz3DyS0MS4" />
+                         <img alt="Profile" className="h-8 w-8 rounded-full object-cover border border-gray-200" src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
                     </div>
                 </header>
 
@@ -53,7 +70,7 @@ const Dashboard = () => {
                         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
-                                <p className="mt-2 text-gray-500">Welcome back, Segun! Here is your daily activity.</p>
+                                <p className="mt-2 text-gray-500">Welcome back, {currentUser?.displayName || 'User'}! Here is your daily activity.</p>
                             </div>
                             <div className="hidden md:flex items-center gap-4">
                                 <div className="relative group">
@@ -68,7 +85,7 @@ const Dashboard = () => {
                                     <span className="material-icons-outlined text-gray-600">notifications</span>
                                     <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
                                 </button>
-                                <img alt="Profile" className="h-11 w-11 rounded-full object-cover border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4gAl8ygivGzLV7fguS8_HqLj4Nz8L6xulfQanmWwRILtbM7AGp_NgwIsDJTevzZC37joVIxncbKh1hQ3p46OohQQKX70g-Dk9ta5N4y4_mLayLFl7vMKCRxYsjxtJCdqL_wV0li03JRubJX_fd8xTOHlw3hbtwoOkhRbM5muqwGY024FFkF4Ce_jaa6he7FAo4QXOIYQVmMrLehG_oZBzG8BHMDJAJ43Mlz4_SOhPXXfzT2w_Hgxv6ShHVYaLCbeDxiz3DyS0MS4" />
+                                <img alt="Profile" className="h-11 w-11 rounded-full object-cover border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
                             </div>
                         </div>
 
@@ -84,7 +101,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Active Tasks</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">0</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">{activeTasksCount}</h3>
                                         </div>
                                     </div>
                                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -93,7 +110,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Completed</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">0</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">{completedTasksCount}</h3>
                                         </div>
                                     </div>
                                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -149,7 +166,23 @@ const Dashboard = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {filteredRequests.map((req) => (
+                                                    {filteredRequests.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="material-icons-outlined text-4xl text-gray-300 mb-2">assignment</span>
+                                                                    <p>No requests found.</p>
+                                                                    <Link to="/customer/post-request" className="text-green-600 hover:text-green-700 font-medium text-sm mt-2">Post your first request</Link>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                    filteredRequests.map((req) => {
+                                                        const date = req.createdAt && req.createdAt.toDate ? format(req.createdAt.toDate(), 'MMM dd, yyyy') : 'Just now';
+                                                        const providerName = req.providerName || "Pending...";
+                                                        const providerAvatar = req.providerAvatar || `https://ui-avatars.com/api/?name=${providerName}&background=random`;
+                                                        
+                                                        return (
                                                         <tr 
                                                             key={req.id} 
                                                             className="hover:bg-gray-50/80 transition-colors cursor-pointer"
@@ -157,15 +190,15 @@ const Dashboard = () => {
                                                         >
                                                             <td className="px-6 py-4">
                                                                 <div>
-                                                                    <div className="font-bold text-gray-900">{req.service}</div>
-                                                                    <div className="text-xs text-gray-400">{req.id}</div>
+                                                                    <div className="font-bold text-gray-900">{req.title || req.service || 'Untitled'}</div>
+                                                                    <div className="text-xs text-gray-400">{req.category || 'General'}</div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 font-medium">{req.date}</td>
+                                                            <td className="px-6 py-4 font-medium">{date}</td>
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-2">
-                                                                    <img src={req.avatar} alt="" className="h-6 w-6 rounded-full bg-gray-200" />
-                                                                    <span className="font-medium text-gray-900">{req.provider}</span>
+                                                                    <img src={providerAvatar} alt="" className="h-6 w-6 rounded-full bg-gray-200" />
+                                                                    <span className="font-medium text-gray-900">{providerName}</span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
@@ -179,7 +212,7 @@ const Dashboard = () => {
                                                                     {req.status}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right font-bold text-gray-900">{req.amount}</td>
+                                                            <td className="px-6 py-4 text-right font-bold text-gray-900">₦{req.budget || 0}</td>
                                                             <td className="px-6 py-4 text-center relative">
                                                                 <button 
                                                                     onClick={(e) => toggleDropdown(e, req.id)}
@@ -191,7 +224,7 @@ const Dashboard = () => {
                                                                 {/* Dropdown Menu */}
                                                                 {openDropdown === req.id && (
                                                                     <div className="absolute right-8 top-8 z-10 w-40 rounded-xl bg-white p-1 shadow-xl border border-gray-100 ring-1 ring-black ring-opacity-5 origin-top-right">
-                                                                        <button onClick={() => navigate('/customer/request-status')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                                                        <button onClick={() => navigate(`/customer/request-status/${req.id}`)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                                                             <span className="material-icons-outlined text-sm">visibility</span>
                                                                             View Details
                                                                         </button>
@@ -207,7 +240,9 @@ const Dashboard = () => {
                                                                 )}
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                        );
+                                                    })
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -224,17 +259,10 @@ const Dashboard = () => {
                                         <button className="text-xs font-semibold text-green-700 hover:underline">View All</button>
                                     </div>
                                     <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-5 before:w-0.5 before:bg-gray-100">
-                                        {recentActivity.map((activity) => (
-                                            <div key={activity.id} className="relative flex items-start gap-4">
-                                                <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-white ${activity.color}`}>
-                                                    <span className="material-icons-outlined text-lg">{activity.icon}</span>
-                                                </div>
-                                                <div className="pt-1">
-                                                    <p className="text-sm font-medium text-gray-900">{activity.text}</p>
-                                                    <span className="text-xs text-gray-500">{activity.time}</span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                        {/* Empty State for Activity */}
+                                        <div className="text-center py-6 text-gray-500 text-sm">
+                                            No recent activity
+                                        </div>
                                     </div>
                                 </div>
 
@@ -242,7 +270,7 @@ const Dashboard = () => {
                                 <div className="rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 text-white shadow-lg overflow-hidden relative">
                                     <div className="relative z-10">
                                         <span className="inline-block rounded-md bg-white/20 px-2 py-1 text-xs font-bold uppercase backdrop-blur-sm mb-3">Premium</span>
-                                        <h3 className="text-lg font-bold">Refer & Earn ₦2,000</h3>
+                                        <h3 className="text-lg font-bold">Refer & Earn ₦500</h3>
                                         <p className="mt-1 text-sm text-gray-300 opacity-90">Invite friends to TaskMate and earn bonus credits.</p>
                                         <button className="mt-4 text-xs font-bold bg-white text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">Invite Friends</button>
                                     </div>
@@ -269,40 +297,46 @@ const Dashboard = () => {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {/* Card Template */}
-                                {[
-                                    { name: 'Tunde Fixes', role: 'Plumbing & Repairs', rate: '₦5,000/hr', rating: 4.9, img: 'https://i.pravatar.cc/150?u=1', jobs: 142 },
-                                    { name: "Sarah's Kitchen", role: 'Catering & Events', rate: '₦12,000/meal', rating: 4.8, img: 'https://i.pravatar.cc/150?u=2', jobs: 89 },
-                                    { name: 'Ibrahim Electric', role: 'Electrical Services', rate: '₦7,500/visit', rating: 5.0, img: 'https://i.pravatar.cc/150?u=3', jobs: 215 },
-                                    { name: 'Clean & Shine', role: 'House Cleaning', rate: '₦15,000/day', rating: 4.7, img: 'https://i.pravatar.cc/150?u=4', jobs: 67 },
-                                ].map((provider, idx) => (
-                                    <Link to={`/customer/provider/${idx}`} key={idx} className="group bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                                {recommendedProviders.length > 0 ? (
+                                    recommendedProviders.map((provider) => (
+                                    <Link to={`/customer/provider/${provider.id}`} key={provider.id} className="group bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                                         <div className="flex items-start justify-between mb-4">
                                              <div className="relative">
-                                                <img src={provider.img} alt={provider.name} className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm" />
+                                                <img src={provider.photoURL || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`} alt={provider.displayName} className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm" />
                                                 <div className="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white w-4 h-4 rounded-full"></div>
                                              </div>
                                              <div className="flex flex-col items-end">
                                                  <span className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg text-xs font-bold">
-                                                     <span className="material-icons-outlined text-[14px]">star</span> {provider.rating}
+                                                     <span className="material-icons-outlined text-[14px]">star</span> {provider.rating || 'New'}
                                                  </span>
-                                                 <span className="text-[10px] text-gray-400 mt-1">{provider.jobs} Jobs</span>
+                                                 <span className="text-[10px] text-gray-400 mt-1">{provider.jobsCompleted || 0} Jobs</span>
                                              </div>
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors">{provider.name}</h3>
-                                            <p className="text-xs text-gray-500 font-medium">{provider.role}</p>
+                                            <h3 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors truncate">{provider.displayName || 'Service Provider'}</h3>
+                                            <p className="text-xs text-gray-500 font-medium truncate">{provider.category || 'General'}</p>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Rate</span>
-                                                <span className="text-sm font-bold text-gray-900">{provider.rate}</span>
+                                                <span className="text-sm font-bold text-gray-900">
+                                                    {provider.hourlyRate ? `₦${Number(provider.hourlyRate).toLocaleString()}` : 'Negotiable'}
+                                                </span>
                                             </div>
                                             <button className="bg-gray-900 text-white p-2 rounded-lg group-hover:bg-green-700 transition-colors">
                                                 <span className="material-icons-outlined text-lg">arrow_forward</span>
                                             </button>
                                         </div>
                                     </Link>
-                                ))}
+                                ))
+                                ) : (
+                                    <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-200 border-dashed">
+                                        <div className="flex flex-col items-center">
+                                            <span className="material-icons-outlined text-4xl text-gray-300 mb-2">person_search</span>
+                                            <p>No recommended providers found in your area yet.</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </section>
                     </div>

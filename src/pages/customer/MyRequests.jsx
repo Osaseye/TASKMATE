@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useData } from '../../context/DataContext';
+import { format } from 'date-fns';
 
 const MyRequests = () => {
     const navigate = useNavigate();
+    const { requests: allRequests } = useData(); // Aliasing
     const [activeTab, setActiveTab] = useState('All');
-
-    // MOCK DATA - EMPTY STATE
-    const allRequests = [];
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -16,22 +16,16 @@ const MyRequests = () => {
             case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'Scheduled': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Open': return 'bg-orange-100 text-orange-700 border-orange-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
-    };
-
-    const normalizeCategory = (cat) => {
-        if (cat === 'All') return 'All';
-        if (cat === 'Active') return 'Active';
-        if (cat === 'History') return ['Completed', 'Cancelled'];
-        return cat;
     };
 
     const filteredRequests = activeTab === 'All' 
         ? allRequests 
         : activeTab === 'History' 
-            ? allRequests.filter(r => ['Completed', 'Cancelled'].includes(r.category))
-            : allRequests.filter(r => r.category === activeTab);
+            ? allRequests.filter(r => ['Completed', 'Cancelled'].includes(r.status))
+            : allRequests.filter(r => ['Open', 'In Progress', 'Scheduled'].includes(r.status));
 
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
@@ -75,10 +69,15 @@ const MyRequests = () => {
                         {/* Requests List */}
                         <div className="space-y-4">
                             {filteredRequests.length > 0 ? (
-                                filteredRequests.map((req) => (
+                                filteredRequests.map((req) => {
+                                    const date = req.createdAt && req.createdAt.toDate ? format(req.createdAt.toDate(), 'MMM dd, yyyy') : 'Just now';
+                                    const providerName = req.providerName || "Pending Assign...";
+                                    const providerAvatar = req.providerAvatar || `https://ui-avatars.com/api/?name=${providerName}&background=random`;
+                                    
+                                    return (
                                     <div 
                                         key={req.id}
-                                        onClick={() => navigate(req.category === 'Active' ? '/customer/request-status' : '/customer/service-review')}
+                                        onClick={() => navigate(req.status === 'Completed' ? '/customer/service-review' : '/customer/request-status')}
                                         className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all cursor-pointer group"
                                     >
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -90,25 +89,31 @@ const MyRequests = () => {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors">
-                                                        {req.service}
+                                                        {req.title || req.category}
                                                     </h3>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <img src={req.providerImg} alt={req.provider} className="w-4 h-4 rounded-full" />
-                                                        <span className="text-sm text-gray-500 font-medium">{req.provider}</span>
+                                                        {req.providerName ? (
+                                                            <>
+                                                                <img src={providerAvatar} alt={providerName} className="w-4 h-4 rounded-full" />
+                                                                <span className="text-sm text-gray-500 font-medium">{providerName}</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md font-medium">Looking for provider...</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Middle: Date & Time */}
                                             <div className="hidden md:block text-left md:text-center">
-                                                <div className="text-sm font-bold text-gray-900">{req.date}</div>
-                                                <div className="text-xs text-gray-400">{req.time}</div>
+                                                <div className="text-sm font-bold text-gray-900">{date}</div>
+                                                <div className="text-xs text-gray-400 capitalize">{req.urgency || 'Standard'} Priority</div>
                                             </div>
 
                                             {/* Right: Amount & Status */}
                                             <div className="flex items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto mt-2 md:mt-0 pl-16 md:pl-0">
                                                 <div className="text-right">
-                                                    <div className="text-lg font-black text-gray-900">{req.amount}</div>
+                                                    <div className="text-lg font-black text-gray-900">₦{req.budget}</div>
                                                 </div>
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(req.status)}`}>
                                                     {req.status}
@@ -118,7 +123,7 @@ const MyRequests = () => {
 
                                         </div>
                                     </div>
-                                ))
+                                )})
                             ) : (
                                 <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200">
                                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">

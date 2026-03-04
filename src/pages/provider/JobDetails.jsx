@@ -1,40 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { doc, onSnapshot, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import StatusUpdateModal from '../../components/provider/StatusUpdateModal';
 import InvoiceUploadModal from '../../components/provider/InvoiceUploadModal';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const JobDetails = () => {
     const { id } = useParams();
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [uploadedInvoice, setUploadedInvoice] = useState(null);
+    const [loading, setLoading] = useState(true);
     
-    const [job, setJob] = useState({
-        id: id || 'TM----',
-        title: '---',
-        status: 'Pending',
-        statusCode: 'pending',
-        customer: {
-            name: '---',
-            rating: 0,
-            jobs: 0,
-            image: '' // Placeholder or empty
-        },
-        location: {
-            address: '---',
-            mapImage: '' // Placeholder or empty
-        },
-        description: '---',
-        photos: [],
-        timeline: [],
-        pricing: {
-            total: '₦0.00',
-            method: '---'
-        }
-    });
+    const [job, setJob] = useState(null);
+
+    useEffect(() => {
+        if (!id) return;
+        
+        const unsubscribe = onSnapshot(doc(db, "requests", id), (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                const data = docSnapshot.data();
+                setJob({
+                    id: docSnapshot.id,
+                    ...data,
+                    // Ensure timeline exists
+                    timeline: data.timeline || [
+                         { title: 'Request Received', time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : '---', status: 'completed' },
+                         { title: 'Provider Assigned', time: '---', status: 'current' }
+                    ],
+                    customer: {
+                        name: data.customerName || 'Customer',
+                        rating: 4.8, // Mock
+                        jobs: 12, // Mock
+                        image: data.customerPhoto || '' 
+                    },
+                    location: {
+                        address: data.location || '---',
+                        mapImage: '' 
+                    },
+                    pricing: {
+                        total: data.budget || '---',
+                        method: 'Cash'
+                    },
+                    statusCode: data.status ? data.status.toLowerCase().replace(' ', '_') : 'pending' 
+                });
+            } else {
+                toast.error("Job request not found");
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching job:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [id]);
 
     const getStatusLabel = (code) => {
         switch(code) {
@@ -47,56 +86,101 @@ const JobDetails = () => {
         }
     };
 
-    const handleStatusUpdate = (statusCode, note) => {
+    const handleStatusUpdate = async (statusCode, note) => {
         setIsStatusModalOpen(false);
         const statusLabel = getStatusLabel(statusCode);
         const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-        setJob(prev => {
-            const newTimeline = prev.timeline.map(t => 
-                t.status === 'current' ? { ...t, status: 'completed' } : t
-            );
+        
+        try {
+            const jobRef = doc(db, "requests", id);
             
-            // Add new timeline entry
-            newTimeline.splice(newTimeline.length - 1, 0, {
+            // Construct new timeline entry
+            const newEntry = {
                 title: statusLabel,
                 time: `Today, ${time}`,
                 status: 'current'
+            };
+
+            await updateDoc(jobRef, {
+                status: statusLabel,
+                statusCode: statusCode, // We should store this in Firestore too if needed
+                timeline: arrayUnion(newEntry)
+                // Note: Updating previous timeline items to 'completed' happens in logic, 
+                // but with arrayUnion we just append. To mark others as completed we'd need to rewrite the whole array.
+                // For simplicity here we just modify local state or re-fetch.
+                // But let's actually update the whole timeline if we want consistency.
+            });
+            
+            // To update previous timeline items, we should ideally read the current timeline, modify it, and write it back.
+            // Since onSnapshot will update specific fields, let's just do a full timeline rewrite if we have the job object.
+            if (job && job.timeline) {
+                const updatedTimeline = job.timeline.map(t => 
+                   t.status === 'current' ? { ...t, status: 'completed' } : t
+                );
+                updatedTimeline.push(newEntry);
+                
+                await updateDoc(jobRef, {
+                    timeline: updatedTimeline,
+                    status: statusLabel
+                });
+            }
+
+            toast.success(`Job status updated to: ${statusLabel}`, {
+                description: note ? `Note added: ${note}` : 'Customer has been notified.'
             });
 
-            return {
-                ...prev,
-                status: statusLabel,
-                statusCode: statusCode,
-                timeline: newTimeline
-            };
-        });
-
-        toast.success(`Job status updated to: ${statusLabel}`, {
-            description: note ? `Note added: ${note}` : 'Customer has been notified.'
-        });
+        } catch (error) {
+            console.error("Error updating status:", error);
+            toast.error("Failed to update status");
+        }
     };
 
-    const handleInvoiceUpload = (file, amount) => {
+    const handleInvoiceUpload = async (file, amount) => {
         setIsInvoiceModalOpen(false);
         const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-        setUploadedInvoice({ name: file?.name || 'Payment Record', amount, date: new Date().toLocaleDateString() });
         
-        setJob(prev => ({
-            ...prev,
-            status: 'Completed',
-            statusCode: 'completed',
-            timeline: prev.timeline.map(t => {
-                if (t.title === 'Job Completed') return { ...t, status: 'completed', time: `Today, ${time}` };
-                return { ...t, status: 'completed' };
-            })
-        }));
+        try {
+              // 1. Upload Invoice File (TODO: Actual Storage Upload)
+              // const invoiceUrl = await uploadFile(file);
+              
+              // 2. Update Job
+              const jobRef = doc(db, "requests", id);
+              
+              await updateDoc(jobRef, {
+                  status: 'Completed',
+                  completedAt: new Date(),
+                  finalAmount: amount,
+                  commission: amount * 0.1,
+                  invoiceUploaded: true
+                  // Update timeline...
+              });
 
-         toast.success('Job Completed Successfully', {
-            description: `Commission of ₦${(amount * 0.1).toLocaleString()} has been added to your outstanding balance.`
-        });
+              setUploadedInvoice({ name: file?.name || 'Payment Record', amount, date: new Date().toLocaleDateString() });
+
+              toast.success('Job Completed Successfully', {
+                description: `Commission of ₦${(amount * 0.1).toLocaleString()} has been added to your outstanding balance.`
+            });
+        } catch (error) {
+             console.error("Error completing job:", error);
+             toast.error("Failed to update job");
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+            </div>
+        );
+    }
+    
+    if (!job) {
+         return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <p>Job not found</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
@@ -176,6 +260,7 @@ const JobDetails = () => {
                             </div>
 
                             {/* Photos Section */}
+                            {job.photos && job.photos.length > 0 && (
                             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-900">
                                     <span className="material-symbols-outlined text-primary">image</span>
@@ -188,14 +273,17 @@ const JobDetails = () => {
                                             <img className="w-full h-full object-cover" src={photo} alt={`Job proof ${index + 1}`} />
                                         </div>
                                     ))}
+                                    {job.photos.length > 2 && (
                                     <div className="aspect-square rounded-xl bg-gray-100 overflow-hidden group cursor-pointer relative flex items-center justify-center">
                                         <img className="w-full h-full object-cover opacity-60 filter blur-sm" src={job.photos[2]} alt="More photos" />
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">+1 more</span>
+                                            <span className="bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">+{job.photos.length - 2} more</span>
                                         </div>
                                     </div>
+                                    )}
                                 </div>
                             </div>
+                            )}
 
                             {/* Location Map */}
                             <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 flex flex-col">
@@ -205,23 +293,32 @@ const JobDetails = () => {
                                         Location
                                     </h3>
                                     <p className="text-gray-700 text-base">
-                                        {job.location.address}
+                                        {typeof job.location === 'string' ? job.location : job.location?.address || 'No location provided'}
                                     </p>
                                 </div>
-                                <div className="relative h-48 w-full bg-gray-100">
-                                    <img 
-                                        className="w-full h-full object-cover grayscale opacity-80" 
-                                        src={job.location.mapImage} 
-                                        alt="Map Location" 
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="bg-primary/90 p-2 rounded-full shadow-lg border-2 border-white animate-bounce">
-                                            <span className="material-symbols-outlined text-white text-2xl block">location_on</span>
+                                <div className="relative h-64 w-full bg-gray-100 z-0">
+                                    {(job.coordinates || (job.location && typeof job.location !== 'string' && job.location.lat)) ? (
+                                        <MapContainer 
+                                            center={job.coordinates ? [job.coordinates.lat, job.coordinates.lng] : [job.location.lat, job.location.lng]} 
+                                            zoom={13} 
+                                            style={{ height: '100%', width: '100%', zIndex: 0 }}
+                                        >
+                                            <TileLayer
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            />
+                                            <Marker position={job.coordinates ? [job.coordinates.lat, job.coordinates.lng] : [job.location.lat, job.location.lng]}>
+                                                <Popup>
+                                                    Service Location
+                                                </Popup>
+                                            </Marker>
+                                        </MapContainer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-400">
+                                            <span className="material-symbols-outlined text-4xl">map</span>
+                                            <span className="ml-2">Map not available</span>
                                         </div>
-                                    </div>
-                                    <button className="absolute bottom-3 right-3 bg-white text-gray-900 px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-gray-50 flex items-center gap-2 transition-transform active:scale-95">
-                                        Open in Maps <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                                    </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

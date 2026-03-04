@@ -1,32 +1,72 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { doc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { useAuth } from '../../context/AuthContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 
 const RequestDetails = () => {
     const { id } = useParams();
-    const [isAccepted, setIsAccepted] = useState(false);
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+    const [request, setRequest] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Mock Data based on ID (In a real app, fetch from API)
-    const request = {
-        id: id || 'REQ----',
-        title: '---',
-        customer: '---',
-        location: '---',
-        distance: '---',
-        priceRange: '₦0 - ₦0',
-        description: '---',
-        urgency: '---',
-        postedTime: '---',
-        images: []
+    useEffect(() => {
+        if (!id) return;
+        const unsubscribe = onSnapshot(doc(db, "requests", id), (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                setRequest({ id: docSnapshot.id, ...docSnapshot.data() });
+            } else {
+                toast.error("Request not found");
+                navigate('/provider/requests');
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching request:", error);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, [id, navigate]);
+
+    const handleAccept = async () => {
+        if (!currentUser) return;
+        
+        try {
+            const reqRef = doc(db, "requests", id);
+            await updateDoc(reqRef, {
+                status: 'Scheduled', // Or 'In-Progress' depending on workflow
+                providerId: currentUser.uid,
+                providerName: currentUser.displayName,
+                providerPhoto: currentUser.photoURL,
+                acceptedAt: new Date(),
+                timeline: arrayUnion({
+                    title: 'Provider Accepted',
+                    time: new Date().toLocaleTimeString(),
+                    status: 'completed'
+                })
+            });
+            toast.success("Job Accepted!", {
+                 description: "You can find this job in 'My Jobs'."
+            });
+            navigate(`/provider/jobs`);
+        } catch (error) {
+            console.error("Error accepting job:", error);
+            toast.error("Failed to accept job");
+        }
     };
+    
+    if (loading) return <div className="p-8 text-center">Loading...</div>;
+    if (!request) return <div className="p-8 text-center">Request not found</div>;
 
     const breadcrumbItems = [
         { label: 'Dashboard', href: '/provider/dashboard' },
         { label: 'Requests', href: '/provider/requests' },
-        { label: `View Request #${request.id}`, href: '#' }
+        { label: `View Request #${request.id.substring(0,6)}`, href: '#' }
     ];
 
     return (
@@ -38,7 +78,7 @@ const RequestDetails = () => {
                 {/* Header */}
                  <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
                     <div className="flex items-center gap-2">
-                        <Link to="/provider/dashboard" className="md:hidden p-1 -ml-2 text-gray-500">
+                        <Link to="/provider/requests" className="md:hidden p-1 -ml-2 text-gray-500">
                             <span className="material-symbols-outlined">arrow_back</span>
                         </Link>
                         <h1 className="text-xl font-semibold text-gray-800">Request Details</h1>
@@ -54,18 +94,18 @@ const RequestDetails = () => {
                             {/* Job Header Card */}
                             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                                 <div className="flex justify-between items-start mb-4">
-                                    <h2 className="text-2xl font-bold text-gray-900">{request.title}</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900">{request.serviceType || request.title}</h2>
                                     <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full uppercase tracking-wide">
-                                        {request.urgency} Priority
+                                        {request.urgency || 'Normal'} Priority
                                     </span>
                                 </div>
                                 
                                 <div className="flex items-center gap-2 text-gray-500 mb-6">
                                     <span className="material-symbols-outlined text-lg">schedule</span>
-                                    <span className="text-sm">Posted {request.postedTime}</span>
+                                    <span className="text-sm">Posted {request.createdAt ? new Date(request.createdAt.seconds * 1000).toLocaleDateString() : 'Recently'}</span>
                                     <span className="mx-2">•</span>
                                     <span className="material-symbols-outlined text-lg">location_on</span>
-                                    <span className="text-sm">{request.distance}</span>
+                                    <span className="text-sm">{request.location}</span>
                                 </div>
 
                                 <div className="prose prose-sm max-w-none text-gray-600">
@@ -73,15 +113,16 @@ const RequestDetails = () => {
                                     <p className="leading-relaxed">{request.description}</p>
                                 </div>
 
-                                {/* Images Preview Mock */}
-                                <div className="mt-6 grid grid-cols-2 gap-4">
-                                   <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                        <span className="material-symbols-outlined">image</span>
-                                   </div>
-                                   <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                        <span className="material-symbols-outlined">image</span>
-                                   </div>
-                                </div>
+                                {/* Images Preview (Conditional) */}
+                                {request.images && request.images.length > 0 && (
+                                    <div className="mt-6 grid grid-cols-2 gap-4">
+                                       {request.images.map((img, idx) => (
+                                           <div key={idx} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                                <img src={img} alt={`Job ${idx}`} className="w-full h-full object-cover"/>
+                                           </div>
+                                       ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -90,7 +131,7 @@ const RequestDetails = () => {
                             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm sticky top-24">
                                 <div className="text-center mb-6">
                                     <p className="text-sm text-gray-500 mb-1">Estimated Budget</p>
-                                    <p className="text-3xl font-bold text-primary">{request.priceRange}</p>
+                                    <p className="text-3xl font-bold text-primary">{request.budget || 'Negotiable'}</p>
                                 </div>
 
                                 <div className="space-y-4 mb-6">
@@ -99,8 +140,8 @@ const RequestDetails = () => {
                                             <span className="material-symbols-outlined text-gray-500">person</span>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-gray-900">{request.customer}</p>
-                                            <p className="text-xs text-gray-500">4.8 ★ (12 Reviews)</p>
+                                            <p className="text-sm font-bold text-gray-900">{request.customerName || 'Customer'}</p>
+                                            <p className="text-xs text-gray-500">New Customer</p>
                                         </div>
                                     </div>
 
@@ -110,25 +151,17 @@ const RequestDetails = () => {
                                     </div>
                                 </div>
 
-                                {!isAccepted ? (
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <button 
-                                            onClick={() => setIsAccepted(true)}
-                                            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
-                                        >
-                                            Accept Job
-                                        </button>
-                                        <button className="w-full py-3 bg-white text-gray-700 font-bold border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                                            Decline
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4 bg-green-50 rounded-xl border border-green-100">
-                                        <span className="material-symbols-outlined text-green-600 text-3xl mb-2">check_circle</span>
-                                        <p className="text-green-800 font-bold">Job Accepted!</p>
-                                        <p className="text-xs text-green-600 mt-1">Check your schedule for details.</p>
-                                    </div>
-                                )}
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button 
+                                        onClick={handleAccept}
+                                        className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
+                                    >
+                                        Accept Job
+                                    </button>
+                                    <Link to="/provider/requests" className="w-full py-3 bg-white text-gray-700 font-bold border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors block text-center">
+                                        Decline / Back
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>

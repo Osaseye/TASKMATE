@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
 import { MapContainer, TileLayer, Circle, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useProviderOnboarding } from '../../../context/ProviderOnboardingContext';
 
 const LocationSelector = ({ center, radius, setCenter }) => {
     useMapEvents({
@@ -22,57 +23,49 @@ const LocationSelector = ({ center, radius, setCenter }) => {
 
 const ServiceDetails = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    radius: 10,
-    hourlyRate: '',
-    minServiceFee: '',
-    emergencyFee: '',
-    availability: {
-      monday: { active: true, start: '09:00', end: '17:00' },
-      tuesday: { active: true, start: '09:00', end: '17:00' },
-      wednesday: { active: true, start: '09:00', end: '17:00' },
-      thursday: { active: true, start: '09:00', end: '17:00' },
-      friday: { active: true, start: '09:00', end: '17:00' },
-      saturday: { active: false, start: '10:00', end: '16:00' },
-      sunday: { active: false, start: '10:00', end: '16:00' },
-    },
-    location: [6.5244, 3.3792], // Default to Lagos
-    isNegotiable: false
-  });
+  const { onboardingData, updateData } = useProviderOnboarding();
+  const formData = onboardingData;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+    updateData({ [name]: type === 'checkbox' ? checked : value });
+  };
+
+  const setFormData = (newStateOrFunction) => {
+       // Adapt old setFormData to updateData for specific complex updaters
+       if (typeof newStateOrFunction === 'function') {
+           const newData = newStateOrFunction(formData);
+            updateData(newData);
+       } else {
+           updateData(newStateOrFunction);
+       }
   };
 
   const handleDayToggle = (day) => {
-    setFormData(prev => ({
-      ...prev,
+    updateData({
       availability: {
-        ...prev.availability,
-        [day]: { ...prev.availability[day], active: !prev.availability[day].active }
+        ...formData.availability,
+        [day]: { ...formData.availability[day], active: !formData.availability[day].active }
       }
-    }));
+    });
   };
 
    const handleTimeChange = (day, field, value) => {
-    setFormData(prev => ({
-      ...prev,
+    updateData({
       availability: {
-        ...prev.availability,
-        [day]: { ...prev.availability[day], [field]: value }
+        ...formData.availability,
+        [day]: { ...formData.availability[day], [field]: value }
       }
-    }));
+    });
   };
 
 
   const handleSliderChange = (e) => {
-    setFormData({ ...formData, radius: e.target.value });
+    updateData({ radius: e.target.value });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Step 2 Data:', formData);
     navigate('/provider/onboarding/step-3');
   };
 
@@ -207,7 +200,7 @@ const ServiceDetails = () => {
               </div>
 
                <div className="flex items-center gap-3">
-                   <div className="relative inline-flex items-center cursor-pointer">
+                   <label className="relative inline-flex items-center cursor-pointer">
                         <input 
                             type="checkbox" 
                             name="isNegotiable" 
@@ -216,7 +209,7 @@ const ServiceDetails = () => {
                             className="sr-only peer" 
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                   </div>
+                   </label>
                    <span className="text-sm font-medium text-gray-700">Is base pricing negotiable?</span>
                </div>
             </div>

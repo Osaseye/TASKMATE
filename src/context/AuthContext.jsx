@@ -1,0 +1,95 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { auth, db } from '../lib/firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+
+const AuthContext = createContext();
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Fetch user role from Firestore
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setCurrentUser({ ...user, ...docSnap.data() });
+        } else {
+          // Fallback if profile doesn't exist yet
+          setCurrentUser(user);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const login = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const logout = () => {
+    return signOut(auth);
+  };
+
+  const updateUserProfile = async (data) => {
+    if (!currentUser) return;
+    const docRef = doc(db, "users", currentUser.uid);
+    await setDoc(docRef, data, { merge: true });
+    
+    // Update local state
+    setCurrentUser(prev => ({ ...prev, ...data }));
+  };
+
+  const register = async (email, password, name, role) => {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const user = result.user;
+    
+    // Update Auth Profile
+    await updateProfile(user, { displayName: name });
+
+    // Create User Document in Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      email: email,
+      displayName: name,
+      role: role, // 'customer' or 'provider'
+      createdAt: new Date().toISOString(),
+      isVerified: role === 'customer' // Customers auto-verified, providers need review
+    });
+
+    return user;
+  };
+
+  const value = {
+    currentUser,
+    loading,
+    login,
+    logout,
+    register,
+    updateUserProfile
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+}

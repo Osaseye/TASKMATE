@@ -4,26 +4,41 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
+import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 
 const ProviderDashboard = () => {
-    // This would typically come from your auth context/user state
-    const isVerified = true; // Toggle this to true to see the "Active" state
+    const { currentUser } = useAuth();
+    const { jobs, earnings = [] } = useData();
+    
+    // Derived state
+    const isVerified = currentUser?.isVerified || true; 
+    
+    // Filter logic: Show jobs that are 'Open' (available to everyone) OR 'Pending' (directed to me)
+    // The DataContext should already filter 'jobs' to include my assigned ones.
+    const nearbyRequests = jobs.filter(j => 
+        j.status === 'Open' || 
+        (j.status === 'Pending' && j.providerId === currentUser?.uid)
+    );
+    
+    const schedule = jobs.filter(j => j.status === 'Scheduled' || j.status === 'In Progress');
+    
+    // Mock activities from jobs for display
+    const activities = jobs.slice(0, 5).map(job => ({
+        id: job.id,
+        type: job.status === 'Completed' ? 'payment' : 'job_update',
+        title: job.status === 'Completed' ? 'Payment Received' : 'New Request',
+        message: job.status === 'Completed' ? `You earned ₦${job.budget}` : `New request: ${job.title}`,
+        time: 'Recently'
+    }));
 
-    // Empty State Data
-    const [nearbyRequests, setNearbyRequests] = useState([]);
-    const [schedule, setSchedule] = useState([]);
-    const [activities, setActivities] = useState([]);
-    const [stats, setStats] = useState({
-        earnings: 0,
-        jobs: 0,
+    const stats = {
+        earnings: earnings.reduce((acc, curr) => acc + curr.amount, 0),
+        jobs: jobs.filter(j => j.status === 'completed').length,
         completionRate: 0,
         responseTime: '-'
-    });
-
-    useEffect(() => {
-        // Real data fetching would happen here
-    }, []);
-
+    };
+    
     const handleDecline = (title) => {
         toast.success(`Declined request: ${title}`, {
             description: 'We will look for other providers.'
@@ -53,11 +68,11 @@ const ProviderDashboard = () => {
                {/* User Menu */}
                <div className="flex items-center gap-3">
                    <div className="hidden md:block text-right">
-                       <p className="text-sm font-semibold text-gray-900">Ayomide J.</p>
-                       <p className="text-xs text-gray-500">Provider ID: #TM-2024</p>
+                       <p className="text-sm font-semibold text-gray-900">{currentUser?.displayName || 'Provider'}</p>
+                       <p className="text-xs text-gray-500">Provider ID: #{currentUser?.uid?.substring(0,6) || 'TM-2024'}</p>
                    </div>
                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold border border-primary/20">
-                       AJ
+                       {currentUser?.displayName ? currentUser.displayName.charAt(0) : 'P'}
                    </div>
                </div>
             </div>
@@ -217,10 +232,41 @@ const ProviderDashboard = () => {
                     </div>
 
                     {nearbyRequests.length > 0 ? (
-                        nearbyRequests.map((job, idx) => (
-                            <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group cursor-pointer">
-                                {/* Request Item UI would go here */}
-                            </div>
+                        nearbyRequests.slice(0, 3).map((job, idx) => (
+                            <Link to={`/provider/requests`} key={job.id} className="block group">
+                                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-5 items-start">
+                                    {/* Icon */}
+                                    <div className="size-14 rounded-xl bg-green-50 text-green-600 flex-shrink-0 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-3xl">
+                                            {job.category === 'Plumbing' ? 'plumbing' : 
+                                             job.category === 'Cleaning' ? 'cleaning_services' : 'handyman'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex-1 w-full">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h4 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{job.title || job.serviceType}</h4>
+                                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">₦{job.budget}</span>
+                                        </div>
+                                        <p className="text-gray-500 text-sm mb-3 line-clamp-2">{job.description}</p>
+                                        
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-gray-500">
+                                            <div className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-base">location_on</span>
+                                                {job.location || 'No location'}
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-base">schedule</span>
+                                                {job.urgency || 'Normal'}
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-base">person</span>
+                                                {job.customerName || 'Customer'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
                         ))
                     ) : (
                         <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center justify-center text-center">
@@ -243,12 +289,31 @@ const ProviderDashboard = () => {
                         <div className="space-y-4">
                              {schedule.length > 0 ? (
                                 schedule.map((item, i) => (
-                                    <div key={i} className="flex gap-3">
-                                        {/* Schedule Item UI */}
-                                    </div>
+                                    <Link to={`/provider/jobs`} key={i} className="flex gap-3 items-start p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                        <div className="flex flex-col items-center bg-white border border-gray-200 rounded-lg p-2 min-w-[3.5rem]">
+                                            <span className="text-xs font-bold text-red-500">TODAY</span>
+                                            <span className="text-lg font-bold text-gray-900">{new Date().getDate()}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.title}</p>
+                                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-sm">schedule</span>
+                                                10:00 AM - 12:00 PM
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                 <span className="material-symbols-outlined text-sm">location_on</span>
+                                                 {item.location || 'Client Location'}
+                                            </p>
+                                        </div>
+                                    </Link>
                                 ))
                              ) : (
-                                <p className="text-sm text-gray-400 text-center py-4">No upcoming jobs.</p>
+                                <div className="text-center py-6">
+                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <span className="material-symbols-outlined text-gray-400">event_busy</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">No scheduled jobs.</p>
+                                </div>
                              )}
                         </div>
                         <Link to="/provider/schedule" className="w-full mt-5 py-2.5 text-sm text-primary font-bold border border-primary/20 rounded-xl hover:bg-primary/5 transition-colors block text-center">
@@ -263,7 +328,12 @@ const ProviderDashboard = () => {
                             {activities.length > 0 ? (
                                 activities.map((activity, i) => (
                                     <div key={i} className="relative z-10 flex gap-4">
-                                        {/* Activity UI */}
+                                        <div className={`mt-1 h-2 w-2 rounded-full ring-4 ring-white ${activity.type === 'payment' ? 'bg-green-500' : 'bg-primary'}`}></div>
+                                        <div className="pb-4 border-l-2 border-gray-100 pl-4 last:border-0 last:pb-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">{activity.message}</p>
+                                            <span className="text-[10px] text-gray-400 mt-1 block uppercase tracking-wider">{activity.time}</span>
+                                        </div>
                                     </div>
                                 ))
                             ) : (

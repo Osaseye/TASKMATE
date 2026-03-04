@@ -3,16 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 
 const MyJobs = () => {
+    const { jobs: allJobs } = useData();
+    const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
 
-    // Mock Data
-    const activeJobs = [];
+    // Filter jobs assigned to current provider
+    const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
 
-    const completedJobs = [];
+    // Context Data
+    const activeJobs = myJobs.filter(j => !['Completed', 'Canceled'].includes(j.status));
+    const completedJobs = myJobs.filter(j => ['Completed', 'Canceled'].includes(j.status));
 
-    const jobs = activeTab === 'active' ? activeJobs : completedJobs;
+    const displayJobs = activeTab === 'active' ? activeJobs : completedJobs;
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
@@ -24,10 +30,10 @@ const MyJobs = () => {
                 <header className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 md:px-8 h-16 flex items-center justify-between">
                     <h1 className="text-xl font-semibold text-gray-800">My Jobs</h1>
                     <div className="flex gap-2">
-                         <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors">
+                         <Link to="/provider/schedule" className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors">
                             <span className="material-symbols-outlined text-lg">calendar_month</span>
                             Calendar
-                         </button>
+                         </Link>
                     </div>
                 </header>
 
@@ -39,14 +45,14 @@ const MyJobs = () => {
                                 onClick={() => setActiveTab('active')}
                                 className={`group flex flex-col items-center pb-3 min-w-[100px] cursor-pointer transition-colors ${activeTab === 'active' ? 'text-primary' : 'text-gray-500 hover:text-gray-800'}`}
                             >
-                                <span className="font-bold text-sm mb-3">Active Jobs</span>
+                                <span className="font-bold text-sm mb-3">Active Jobs ({activeJobs.length})</span>
                                 <div className={`h-0.5 w-full rounded-full transition-colors ${activeTab === 'active' ? 'bg-primary' : 'bg-transparent group-hover:bg-gray-200'}`}></div>
                             </button>
                             <button 
                                 onClick={() => setActiveTab('completed')}
                                 className={`group flex flex-col items-center pb-3 min-w-[100px] cursor-pointer transition-colors ${activeTab === 'completed' ? 'text-primary' : 'text-gray-500 hover:text-gray-800'}`}
                             >
-                                <span className="font-bold text-sm mb-3">Completed</span>
+                                <span className="font-bold text-sm mb-3">Completed ({completedJobs.length})</span>
                                 <div className={`h-0.5 w-full rounded-full transition-colors ${activeTab === 'completed' ? 'bg-primary' : 'bg-transparent group-hover:bg-gray-200'}`}></div>
                             </button>
                         </div>
@@ -55,7 +61,7 @@ const MyJobs = () => {
                     {/* Jobs List */}
                     <div className="space-y-4">
                         <AnimatePresence mode="wait">
-                            {jobs.length === 0 ? (
+                            {displayJobs.length === 0 ? (
                                 <motion.div 
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -68,8 +74,8 @@ const MyJobs = () => {
                                     <p className="text-gray-500">You don't have any {activeTab} jobs at the moment.</p>
                                 </motion.div>
                             ) : (
-                                jobs.map((job, idx) => (
-                                    <motion.article
+                                displayJobs.map((job) => (
+                                    <motion.div
                                         key={job.id}
                                         initial={{ opacity: 0, scale: 0.98 }}
                                         animate={{ opacity: 1, scale: 1 }}
@@ -79,14 +85,17 @@ const MyJobs = () => {
                                     >
                                         <div className="flex flex-col md:flex-row gap-5 items-start">
                                             {/* Icon */}
-                                            <div className={`size-14 rounded-xl ${job.color} flex-shrink-0 flex items-center justify-center`}>
-                                                <span className="material-symbols-outlined text-3xl">{job.icon}</span>
+                                            <div className="size-14 rounded-xl bg-primary/10 text-primary flex-shrink-0 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-3xl">
+                                                    {job.serviceType?.toLowerCase().includes('clean') ? 'cleaning_services' : 
+                                                     job.serviceType?.toLowerCase().includes('repair') ? 'home_repair_service' : 'handyman'}
+                                                </span>
                                             </div>
 
                                             {/* Content */}
                                             <div className="flex-1 w-full">
                                                 <div className="flex flex-wrap justify-between items-start mb-1">
-                                                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">{job.title}</h3>
+                                                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">{job.serviceType || job.title}</h3>
                                                     <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
                                                         activeTab === 'active' 
                                                             ? 'bg-blue-50 text-blue-700 border-blue-100' 
@@ -95,12 +104,14 @@ const MyJobs = () => {
                                                         {job.status.toUpperCase()}
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-500 text-sm mb-3">ID: #{job.id} • {job.date}</p>
+                                                <p className="text-gray-500 text-sm mb-3">
+                                                    ID: #{job.id.substring(0, 6)} • {job.createdAt ? new Date(job.createdAt.seconds * 1000).toLocaleDateString() : 'Date N/A'}
+                                                </p>
                                                 
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
                                                     <div className="flex items-center gap-2 text-sm text-gray-700">
                                                         <span className="material-symbols-outlined text-lg text-gray-400">person</span>
-                                                        <span className="font-medium">{job.customer}</span>
+                                                        <span className="font-medium">{job.customerName || 'Customer'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-sm text-gray-700">
                                                         <span className="material-symbols-outlined text-lg text-gray-400">location_on</span>
@@ -116,18 +127,18 @@ const MyJobs = () => {
                                             {/* Action */}
                                             <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-4 mt-2 md:mt-0 pl-0 md:pl-4 md:border-l border-gray-100">
                                                 <div className="text-right">
-                                                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Earnings</p>
-                                                    <p className="text-2xl font-black text-primary">{job.budget}</p>
+                                                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Budget</p>
+                                                    <p className="text-2xl font-black text-primary">{job.budget || 'Negotiable'}</p>
                                                 </div>
                                                 <Link 
-                                                    to={activeTab === 'active' ? `/provider/jobs/${job.id}` : '#'} 
+                                                    to={`/provider/jobs/${job.id}`}
                                                     className="w-full md:w-auto bg-white border border-gray-200 hover:border-primary hover:text-primary text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
                                                 >
                                                     <span>View Details</span>
                                                 </Link>
                                             </div>
                                         </div>
-                                    </motion.article>
+                                    </motion.div>
                                 ))
                             )}
                         </AnimatePresence>

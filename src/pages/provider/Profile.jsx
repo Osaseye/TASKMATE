@@ -1,30 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { Toaster, toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
+import { storage } from '../../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const Profile = () => {
+  const { currentUser, updateUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('details'); // details, services, reviews
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [profile, setProfile] = useState({
-    name: '---',
-    email: '---',
-    phone: '---',
-    location: '---',
-    bio: '---',
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    bio: '',
     rating: 0,
     jobsCompleted: 0,
-    memberSince: '---',
-    avatar: '', // Placeholder
+    memberSince: '',
+    avatar: 'https://via.placeholder.com/150',
     banner: null
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success('Profile updated successfully');
+  const [services, setServices] = useState([
+    { id: 1, name: 'Generator Repair', rate: '₦5,000', unit: 'per visit' },
+    { id: 2, name: 'House Wiring', rate: '₦15,000', unit: 'per room' },
+    { id: 3, name: 'AC Installation', rate: '₦10,000', unit: 'per unit' },
+  ]);
+
+  useEffect(() => {
+    if (currentUser) {
+      setProfile({
+        name: currentUser.displayName || '',
+        email: currentUser.email || '',
+        phone: currentUser.phoneNumber || '',
+        location: currentUser.address || '',
+        bio: currentUser.description || currentUser.bio || '',
+        rating: currentUser.rating || 0,
+        jobsCompleted: currentUser.jobsCompleted || 0,
+        memberSince: currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : '---',
+        avatar: currentUser.photoURL || 'https://via.placeholder.com/150',
+        banner: currentUser.banner || null
+      });
+      if (currentUser.services) {
+        setServices(currentUser.services);
+      }
+    }
+  }, [currentUser]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await updateUserProfile({
+        displayName: profile.name,
+        phoneNumber: profile.phone,
+        address: profile.location,
+        bio: profile.bio,
+        description: profile.bio, // Keep description in sync
+        services: services 
+      });
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error('Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -32,16 +79,60 @@ const Profile = () => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageUpload = (type) => {
-    // Mock upload
-    toast.info(`Click here to upload ${type}`);
+  const handleFileChange = async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error('Image size should be less than 5MB');
+        return;
+    }
+
+    const toastId = toast.loading(`Uploading ${type}...`);
+
+    try {
+        const storageRef = ref(storage, `${type === 'avatar' ? 'profile_pictures' : 'banners'}/${currentUser.uid}/${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                // Optional: Update progress in UI
+            },
+            (error) => {
+                console.error("Upload error:", error);
+                toast.error(`Failed to upload ${type}`, { id: toastId });
+            },
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                
+                // Update Firestore and Local State immediately
+                const updateData = type === 'avatar' ? { photoURL: downloadURL } : { banner: downloadURL };
+                await updateUserProfile(updateData);
+                
+                setProfile(prev => ({ 
+                    ...prev, 
+                    [type === 'avatar' ? 'avatar' : 'banner']: downloadURL 
+                }));
+                
+                toast.success(`${type === 'avatar' ? 'Profile picture' : 'Banner'} updated!`, { id: toastId });
+            }
+        );
+    } catch (error) {
+        console.error("Error setting up upload:", error);
+        toast.error("An error occurred", { id: toastId });
+    }
   };
 
-  const [services, setServices] = useState([
-    { id: 1, name: 'Generator Repair', rate: '₦5,000', unit: 'per visit' },
-    { id: 2, name: 'House Wiring', rate: '₦15,000', unit: 'per room' },
-    { id: 3, name: 'AC Installation', rate: '₦10,000', unit: 'per unit' },
-  ]);
+  const handleImageUploadClick = (type) => {
+    document.getElementById(`file-input-${type}`).click();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans text-gray-800">
@@ -54,8 +145,21 @@ const Profile = () => {
           <h1 className="text-xl font-semibold text-gray-800">My Profile</h1>
           {isEditing ? (
              <div className="flex gap-2">
-                 <button onClick={() => setIsEditing(false)} className="px-4 py-1.5 rounded-lg text-gray-600 font-medium hover:bg-gray-100">Cancel</button>
-                 <button onClick={handleSave} className="px-4 py-1.5 rounded-lg bg-primary text-primary-content font-bold shadow-sm">Save Changes</button>
+                 <button 
+                    onClick={() => setIsEditing(false)} 
+                    disabled={loading}
+                    className="px-4 py-1.5 rounded-lg text-gray-600 font-medium hover:bg-gray-100 disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                 <button 
+                    onClick={handleSave} 
+                    disabled={loading}
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-content font-bold shadow-sm disabled:opacity-50 flex items-center gap-2"
+                >
+                    {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
+                    Save Changes
+                </button>
              </div>
           ) : (
              <button onClick={() => setIsEditing(true)} className="text-primary font-medium hover:underline">Edit Profile</button>
@@ -64,9 +168,29 @@ const Profile = () => {
 
         <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
           
+          {/* Hidden File Inputs */}
+          <input 
+            type="file" 
+            id="file-input-avatar" 
+            className="hidden" 
+            accept="image/*"
+            onChange={(e) => handleFileChange(e, 'avatar')}
+          />
+          <input 
+            type="file" 
+            id="file-input-cover" 
+            className="hidden" 
+            accept="image/*"
+            onChange={(e) => handleFileChange(e, 'cover')}
+          />
+
           {/* Profile Header Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className={`h-32 bg-primary/10 relative group ${isEditing ? 'cursor-pointer hover:bg-primary/20' : ''}`} onClick={() => isEditing && handleImageUpload('cover')}>
+            <div 
+                className={`h-32 bg-primary/10 relative group ${isEditing ? 'cursor-pointer hover:bg-primary/20' : ''}`} 
+                onClick={() => isEditing && handleImageUploadClick('cover')}
+            >
+               {profile.banner && <img src={profile.banner} alt="Banner" className="w-full h-full object-cover" />}
                {isEditing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="material-symbols-outlined text-white text-3xl drop-shadow-md">upload</span>
@@ -80,11 +204,12 @@ const Profile = () => {
                     src={profile.avatar} 
                     alt={profile.name} 
                     className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover bg-white"
+                    onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=User'; }}
                   />
                   {isEditing && (
                     <button 
-                        onClick={() => handleImageUpload('avatar')}
-                        className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-4 border-transparent"
+                        onClick={(e) => { e.stopPropagation(); handleImageUploadClick('avatar'); }}
+                        className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-4 border-transparent cursor-pointer"
                     >
                          <span className="material-symbols-outlined text-white">photo_camera</span>
                     </button>
@@ -94,17 +219,21 @@ const Profile = () => {
                 <div className="flex-1 w-full">
                   {isEditing ? (
                       <div className="space-y-2 max-w-md">
+                          <label className="block text-xs text-gray-400 uppercase font-semibold">Display Name</label>
                           <input 
                             name="name"
                             value={profile.name}
                             onChange={handleChange}
                             className="text-2xl font-bold text-gray-900 border-b border-gray-300 focus:border-primary outline-none bg-transparent w-full pb-1"
+                            placeholder="Your Name"
                           />
+                          <label className="block text-xs text-gray-400 uppercase font-semibold mt-2">Location</label>
                           <input 
                             name="location"
                             value={profile.location}
                             onChange={handleChange}
                             className="text-gray-500 text-sm border-b border-gray-300 focus:border-primary outline-none bg-transparent w-full pb-1"
+                            placeholder="City, State"
                           />
                       </div>
                   ) : (
@@ -112,14 +241,14 @@ const Profile = () => {
                         <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
                         <p className="text-gray-500 flex items-center gap-1 text-sm">
                             <span className="material-symbols-outlined text-lg">location_on</span>
-                            {profile.location}
+                            {profile.location || 'Location not set'}
                         </p>
                       </>
                   )}
                 </div>
                 <div className="flex gap-3 mt-4 md:mt-0">
                   <div className="text-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="text-lg font-bold text-gray-900">{profile.rating}</div>
+                    <div className="text-lg font-bold text-gray-900">{parseFloat(profile.rating).toFixed(1)}</div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide">Rating</div>
                   </div>
                   <div className="text-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
@@ -130,15 +259,19 @@ const Profile = () => {
               </div>
               
               {isEditing ? (
-                  <textarea 
-                    name="bio"
-                    value={profile.bio}
-                    onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:border-primary outline-none text-gray-600 leading-relaxed min-h-[100px]"
-                  />
+                  <div className="mt-4">
+                    <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Bio</label>
+                    <textarea 
+                        name="bio"
+                        value={profile.bio}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:border-primary outline-none text-gray-600 leading-relaxed min-h-[100px]"
+                        placeholder="Tell customers about your experience and skills..."
+                    />
+                  </div>
               ) : (
-                  <p className="text-gray-600 leading-relaxed max-w-3xl">
-                    {profile.bio}
+                  <p className="text-gray-600 leading-relaxed max-w-3xl mt-2">
+                    {profile.bio || 'No bio provided yet.'}
                   </p>
               )}
             </div>

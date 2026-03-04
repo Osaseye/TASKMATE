@@ -1,23 +1,84 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { format } from 'date-fns';
 
 const RequestStatus = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [request, setRequest] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchRequest = async () => {
+            if (!id) return;
+            try {
+                const docRef = doc(db, "requests", id);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setRequest({ id: docSnap.id, ...docSnap.data() });
+                } else {
+                    console.log("No such request!");
+                }
+            } catch (error) {
+                console.error("Error fetching request:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRequest();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+        );
+    }
+
+    if (!request) {
+        return (
+             <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+                <p className="text-gray-500">Request not found.</p>
+                <button onClick={() => navigate('/dashboard')} className="text-green-600 font-bold hover:underline">Back to Dashboard</button>
+            </div>
+        );
+    }
+    
+    // Status Logic helper
+    const getStatusIndex = (status) => {
+        switch(status) {
+            case 'Pending': return 0; // Direct request sent
+            case 'Open': return 0; // General request sent
+            case 'Scheduled': return 1; // Provider Assigned
+            case 'In Progress': return 2; // Work started
+            case 'Completed': return 3;
+            default: return 0;
+        }
+    };
+    
+    const currentStatusIndex = getStatusIndex(request.status);
+    const dateStr = request.createdAt?.toDate ? format(request.createdAt.toDate(), 'MMM dd, yyyy h:mm a') : 'Just now';
+
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
             <Sidebar />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24">
                     <div className="max-w-7xl mx-auto">
                         <div className="mb-8">
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                                        ---
+                                        {request.title}
                                     </h1>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Order ID: #TM---- • Placed on ---
+                                        Order ID: #{request.id.slice(0, 8).toUpperCase()} • Placed on {dateStr}
                                     </p>
                                 </div>
                                 <div className="flex gap-3">
@@ -34,103 +95,93 @@ const RequestStatus = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-6">
                                 <div className="bg-white shadow rounded-lg p-6">
-                                    <h2 className="text-lg font-medium text-gray-900 mb-6">Request Status</h2>
+                                    <h2 className="text-lg font-medium text-gray-900 mb-6 font-display">Request Status Timeline</h2>
                                     <div className="relative pl-4">
-                                        <div className="absolute left-7 top-0 bottom-6 w-0.5 bg-gray-200 -z-10"></div>
+                                        {/* Vertical Line */}
+                                        <div className="absolute left-3 top-2 bottom-6 w-0.5 bg-gray-200 -z-10"></div>
                                         
-                                        {/* Status 1: Received */}
-                                        <div className="flex items-start mb-8 relative">
-                                            <div className="flex-shrink-0 mr-4">
-                                                <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
-                                                    <span className="material-icons-outlined text-white text-sm">check</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-grow pt-0.5">
-                                                <h3 className="text-sm font-semibold text-gray-900">Request Sent</h3>
-                                                <p className="text-sm text-gray-500 mt-1">Your request has been received and is being processed.</p>
-                                                <span className="text-xs text-gray-400 mt-1 block">Oct 24, 10:30 AM</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Status 2: Provider Assigned */}
-                                        <div className="flex items-start mb-8 relative">
-                                            <div className="flex-shrink-0 mr-4">
-                                                <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
-                                                    <span className="material-icons-outlined text-white text-sm">check</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-grow pt-0.5">
-                                                <h3 className="text-sm font-semibold text-gray-900">Provider Assigned</h3>
-                                                <p className="text-sm text-gray-500 mt-1">Emmanuel Okafor has accepted your request.</p>
-                                                <span className="text-xs text-gray-400 mt-1 block">Oct 24, 11:15 AM</span>
-                                                <div className="mt-3 flex items-center p-3 border border-gray-200 rounded-md bg-gray-50">
-                                                    <img alt="Provider Avatar" className="h-10 w-10 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAJ1iNTEkALEAtX8-GML3QtWOrsP9Zq9oakd62z8pcI2_TSIMBy1ialnReulFWYMee6-1PrfVUUIPidxZB0efKdJELhiHt5Wk5EYSq40_3svfAfesXt514p1MV-4GLCB_doQBAYPYSYJIgwws3emy5jMLlWVFBytbpAJXTHY_KHQQqBVN-qV77WL0-WNBqrLlaNBd8hFB4cFCw1z5kRMK0zDbkkK50cTES5YUoKGHAMiVyxAaVpTtH3xdujxEGZ5gr9I1-VCCcVxU"/>
-                                                    <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900">Emmanuel Okafor</p>
-                                                        <div className="flex items-center">
-                                                            <span className="material-icons-outlined text-yellow-500 text-xs">star</span>
-                                                            <span className="text-xs text-gray-500 ml-1">4.8 (124 jobs)</span>
+                                        {(request.timeline && request.timeline.length > 0) ? (
+                                            request.timeline.map((event, index) => (
+                                                <div key={index} className="flex items-start mb-8 relative">
+                                                    <div className="flex-shrink-0 mr-4">
+                                                        <div className={`h-6 w-6 rounded-full flex items-center justify-center ring-4 ring-white z-10 ${index <= request.timeline.length - 1 ? 'bg-green-500' : 'bg-gray-200'}`}>
+                                                            <span className="material-icons-outlined text-white text-sm">check</span>
                                                         </div>
                                                     </div>
+                                                    <div className="flex-grow pt-0.5">
+                                                        <h3 className="text-sm font-semibold text-gray-900">{event.title}</h3>
+                                                        <p className="text-sm text-gray-500 mt-1">{event.description || 'Status updated'}</p>
+                                                        <span className="text-xs text-gray-400 mt-1 block">{event.time || format(new Date(), 'h:mm a')}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            // Fallback if no timeline array exists yet (e.g. legacy or fresh req)
+                                            <>
+                                            <div className="flex items-start mb-8 relative">
+                                                <div className="flex-shrink-0 mr-4">
+                                                    <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
+                                                        <span className="material-icons-outlined text-white text-sm">check</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-grow pt-0.5">
+                                                    <h3 className="text-sm font-semibold text-gray-900">Request Sent</h3>
+                                                    <p className="text-sm text-gray-500 mt-1">Your request has been received.</p>
+                                                    <span className="text-xs text-gray-400 mt-1 block">{dateStr}</span>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        {/* Status 3: Work in Progress */}
-                                        <div className="flex items-start mb-8 relative">
-                                            <div className="flex-shrink-0 mr-4">
-                                                <div className="h-6 w-6 rounded-full bg-white border-2 border-green-500 flex items-center justify-center ring-4 ring-white z-10 animate-pulse">
-                                                    <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
+                                            {request.status !== 'Open' && request.status !== 'Pending' && (
+                                                <div className="flex items-start mb-8 relative">
+                                                    <div className="flex-shrink-0 mr-4">
+                                                        <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
+                                                            <span className="material-icons-outlined text-white text-sm">person</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-grow pt-0.5">
+                                                        <h3 className="text-sm font-semibold text-gray-900">Provider Assigned</h3>
+                                                        <p className="text-sm text-gray-500 mt-1">{request.providerName} accepted the job.</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex-grow pt-0.5">
-                                                <h3 className="text-sm font-semibold text-green-600">Work in Progress</h3>
-                                                <p className="text-sm text-gray-500 mt-1">Provider is currently working on your request.</p>
-                                                <span className="text-xs text-green-600 font-medium mt-1 block">Ongoing</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Status 4: Completed (Future) */}
-                                        <div className="flex items-start relative">
-                                            <div className="flex-shrink-0 mr-4">
-                                                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center ring-4 ring-white z-10">
-                                                    <span className="h-2 w-2 rounded-full bg-gray-400"></span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-grow pt-0.5">
-                                                <h3 className="text-sm font-medium text-gray-400">Completed</h3>
-                                                <p className="text-sm text-gray-400 mt-1">Job finished and payment processed.</p>
-                                            </div>
-                                        </div>
+                                            )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                             
                             <div className="lg:col-span-1 space-y-6">
                                 <div className="bg-white shadow rounded-lg p-6">
-                                    <h2 className="text-lg font-medium text-gray-900 mb-4">Job Details</h2>
+                                    <h2 className="text-lg font-medium text-gray-900 mb-4 font-display">Job Details</h2>
                                     <dl className="grid grid-cols-1 gap-y-6">
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Service Type</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">Plumbing</dd>
+                                            <dd className="mt-1 text-sm text-gray-900">{request.category}</dd>
                                         </div>
                                         <div>
-                                            <dt className="text-sm font-medium text-gray-500">Estimated Cost</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">₦ 15,000 - ₦ 20,000</dd>
+                                            <dt className="text-sm font-medium text-gray-500">Budget</dt>
+                                            <dd className="mt-1 text-sm text-gray-900">₦{request.budget}</dd>
                                         </div>
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Description</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">
-                                                Kitchen sink is leaking from the bottom pipe. The water pressure is low as well. Need urgent fix before evening.
+                                            <dd className="mt-1 text-sm text-gray-900 line-clamp-3">
+                                                {request.description}
                                             </dd>
                                         </div>
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Address</dt>
                                             <dd className="mt-1 text-sm text-gray-900 flex items-start">
                                                 <span className="material-icons-outlined text-gray-400 mr-1 text-sm mt-0.5">location_on</span>
-                                                Block 4, Flat 12, Lekki Gardens Phase 2, Lagos
+                                                {request.location || 'No location provided'}
                                             </dd>
                                         </div>
+                                        {request.image && (
+                                            <div>
+                                                <dt className="text-sm font-medium text-gray-500">Attachment</dt>
+                                                <dd className="mt-2">
+                                                    <img src={request.image} alt="Request attachment" className="h-24 w-full object-cover rounded-md border border-gray-200" />
+                                                </dd>
+                                            </div>
+                                        )}
                                     </dl>
                                 </div>
 

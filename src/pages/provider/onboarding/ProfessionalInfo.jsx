@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
+import { useProviderOnboarding } from '../../../context/ProviderOnboardingContext';
 
 const ProfessionalInfo = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    businessName: '',
-    category: '',
-    description: '',
-    address: '',
-    website: '',
-    profileImage: null,
-    yearsOfExperience: ''
-  });
+  const { onboardingData, updateData, files, updateFiles } = useProviderOnboarding();
+
+  // We can treat files.profileImage as part of formData for compatibility with rendering logic below
+  const formData = { ...onboardingData, profileImage: files.profileImage };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, profileImage: file });
+      updateFiles({ profileImage: file });
     }
   };
 
@@ -29,12 +25,11 @@ const ProfessionalInfo = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Validate
-    console.log('Step 1 Data:', formData);
     navigate('/provider/onboarding/step-2');
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    updateData({ [e.target.name]: e.target.value });
   };
 
   const SidebarContent = (

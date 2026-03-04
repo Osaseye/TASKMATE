@@ -1,9 +1,194 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../lib/firebase';
+
+// Fix for Leaflet marker icons in React
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
+
+const LocationMarker = ({ position, setPosition, setAddress }) => {
+    const map = useMapEvents({
+        click(e) {
+            setPosition(e.latlng);
+            // Reverse Geocode
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        setAddress(data.display_name);
+                    }
+                })
+                .catch(err => console.error("Geocoding error:", err));
+        },
+    });
+
+    useEffect(() => {
+        if (position) {
+            map.flyTo(position, map.getZoom());
+        }
+    }, [position, map]);
+
+    return position === null ? null : (
+        <Marker position={position}></Marker>
+    );
+};
+
 
 const PostRequest = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { providerId, providerName, category } = location.state || {}; // Added category
+    const { createRequest } = useData();
+    const [loading, setLoading] = useState(false);
+    const { currentUser } = useAuth();
+    
+    // Default to Lagos
+    const [mapCenter, setMapCenter] = useState([6.5244, 3.3792]);
+    const [markerPos, setMarkerPos] = useState(null);
+    const [address, setAddress] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
+
+    useEffect(() => {
+        // If user has a default address, prioritize it
+        if (currentUser?.address) {
+            setAddress(currentUser.address);
+            
+            // Forward Geocode the address to show on map
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(currentUser.address)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const { lat, lon } = data[0];
+                        const coords = [parseFloat(lat), parseFloat(lon)];
+                        setMapCenter(coords);
+                        setMarkerPos(coords);
+                    }
+                })
+                .catch(err => console.error("Geocoding existing address error:", err));
+        } else {
+            // Only use current geolocation if NO address is set
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        setMapCenter([latitude, longitude]);
+                        setMarkerPos([latitude, longitude]);
+                        // Reverse geocode explicitly
+                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if(data.display_name) setAddress(data.display_name);
+                            });
+                    },
+                    (err) => console.error("Geolocation error:", err)
+                );
+            }
+        }
+    }, [currentUser]);
+
+    // Update map marker when map is clicked (handled by LocationMarker)
+    const handleMapClick = (latlng) => {
+        setMarkerPos(latlng);
+        // Reverse geocode
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+            .then(res => res.json())
+            .then(data => {
+                 if(data.display_name) setAddress(data.display_name);
+            });
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        const formData = new FormData(e.target);
+        
+        // Handle radio buttons specifically if needed, but FormData usually captures them well if checked.
+        // Get the urgency value which is radio
+        const urgency = formData.get('urgency'); // will be 'low', 'medium', or 'high'
+        
+        let fileUrl = null;
+        if (selectedFile) {
+            try {
+                const storageRef = ref(storage, `requests/${Date.now()}_${selectedFile.name}`);
+                const snapshot = await uploadBytes(storageRef, selectedFile);
+                fileUrl = await getDownloadURL(snapshot.ref);
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                toast.error("Failed to upload image. Please try again.");
+                setLoading(false);
+                return;
+            }
+        }
+        
+        const data = {
+            title: formData.get('title'),
+            category: formData.get('category'),
+            budget: formData.get('budget'),
+            description: formData.get('description'),
+            location: address, // Use state address
+            coordinates: markerPos ? { lat: markerPos.lat || markerPos[0], lng: markerPos.lng || markerPos[1] } : null,
+            urgency: urgency, // Explicitly get urgency
+            image: fileUrl, // Add image URL
+            providerId: providerId || null,
+            status: providerId ? 'Pending' : 'Open',
+            providerName: providerName || null,
+            timeline: [
+                {
+                    title: 'Request Posted',
+                    description: 'Your request has been submitted successfully.',
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    date: new Date().toDateString(),
+                    status: 'completed'
+                }
+            ]
+            // file-upload handling would go here (upload to storage first)
+        };
+        
+        if (!data.title || !data.description || !data.location || !data.budget) {
+            toast.error('Please fill in all required fields');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            await createRequest(data);
+            toast.success('Request posted successfully!');
+            navigate('/dashboard');
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to post request.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="font-body bg-gray-50 text-gray-900 min-h-screen">
             <div className="flex h-screen overflow-hidden">
@@ -21,12 +206,15 @@ const PostRequest = () => {
                                 <span className="material-icons-outlined text-lg mr-1">arrow_back</span>
                                 Back to Dashboard
                             </Link>
-                            <h1 className="text-3xl font-bold text-gray-900">Post a Request</h1>
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                Post a Request
+                                {providerName && <span className="block text-xl text-green-600 font-medium mt-1">for {providerName}</span>}
+                            </h1>
                             <p className="mt-2 text-gray-600">Describe the task you need help with in Lagos, Abuja, or anywhere in Nigeria.</p>
                         </div>
 
                         <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
-                            <form className="p-6 space-y-8">
+                            <form className="p-6 space-y-8" onSubmit={handleSubmit}>
                                 {/* Task Details */}
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
@@ -47,13 +235,33 @@ const PostRequest = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="category">Category</label>
-                                                <select className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none" id="category" name="category">
-                                                    <option>Home Repairs</option>
-                                                    <option>Cleaning</option>
-                                                    <option>Delivery</option>
-                                                    <option>IT Support</option>
-                                                    <option>Other</option>
+                                                <select
+                                                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none ${category ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    id="category"
+                                                    name="category"
+                                                    defaultValue={category || 'Other'}
+                                                    // readOnly={!!category} // Actually, select doesn't support readOnly standardly, usually disabled is used but that prevents form submission.
+                                                    // Better: Use a controlled component or just let them change it but default it.
+                                                    // User said "it should already be...". Let's disable interaction via pointer-events if we really want to lock it,
+                                                    // or just trust the user. Given prompt "category should need to be selected it should already be...", I'll lock it.
+                                                    disabled={!!category}
+                                                >
+                                                    {/* Ensure unique options */}
+                                                    {[
+                                                        'Plumbing', 'Electrical', 'Cleaning', 
+                                                        'Moving', 'Painting', 'Landscaping', 'Other'
+                                                    ].includes(category) || !category ? null : <option value={category}>{category}</option>}
+                                                    
+                                                    <option value="Plumbing">Plumbing</option>
+                                                    <option value="Electrical">Electrical</option>
+                                                    <option value="Cleaning">Cleaning</option>
+                                                    <option value="Moving">Moving</option>
+                                                    <option value="Painting">Painting</option>
+                                                    <option value="Landscaping">Landscaping</option>
+                                                    <option value="Other">Other</option>
                                                 </select>
+                                                {/* If disabled, we must include a hidden input to submit the value */}
+                                                {category && <input type="hidden" name="category" value={category} />}
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="budget">Budget (₦)</label>
@@ -90,15 +298,40 @@ const PostRequest = () => {
                                         <span className="material-icons-outlined text-green-600">image</span>
                                         <h2 className="text-lg font-semibold text-gray-900">Images</h2>
                                     </div>
-                                    <div className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 hover:bg-gray-50 transition-colors cursor-pointer group">
+                                    <div className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 hover:bg-gray-50 transition-colors cursor-pointer group relative">
                                         <div className="text-center">
-                                            <span className="material-icons-outlined text-4xl text-gray-400 group-hover:text-green-600 transition-colors">cloud_upload</span>
+                                            {previewUrl ? (
+                                                <div className="mb-4 relative inline-block">
+                                                    <img src={previewUrl} alt="Preview" className="h-48 object-contain rounded-md shadow-sm" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setSelectedFile(null);
+                                                            setPreviewUrl(null);
+                                                        }}
+                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
+                                                    >
+                                                        <span className="material-icons-outlined text-sm block">close</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="material-icons-outlined text-4xl text-gray-400 group-hover:text-green-600 transition-colors">cloud_upload</span>
+                                            )}
+                                            
                                             <div className="mt-4 flex text-sm text-gray-600 justify-center">
                                                 <label className="relative cursor-pointer rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none" htmlFor="file-upload">
-                                                    <span>Upload a file</span>
-                                                    <input className="sr-only" id="file-upload" name="file-upload" type="file"/>
+                                                    <span>{selectedFile ? 'Change file' : 'Upload a file'}</span>
+                                                    <input 
+                                                        className="sr-only" 
+                                                        id="file-upload" 
+                                                        name="file-upload" 
+                                                        type="file" 
+                                                        accept="image/*"
+                                                        onChange={handleFileChange}
+                                                    />
                                                 </label>
-                                                <p className="pl-1">or drag and drop</p>
+                                                {!selectedFile && <p className="pl-1">or drag and drop</p>}
                                             </div>
                                             <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
                                         </div>
@@ -113,27 +346,64 @@ const PostRequest = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="location">Service Location</label>
-                                            <div className="relative">
-                                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                    <span className="material-icons-outlined text-gray-400 text-sm">place</span>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="location">Service Location (Select on Map)</label>
+                                            <div className="space-y-4">
+                                                {/* Location Input with Map Integration */}
+                                                <div className="relative">
+                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                        <span className="material-icons-outlined text-gray-400 text-sm">place</span>
+                                                    </div>
+                                                    <input 
+                                                        className="block w-full rounded-md border-gray-300 pl-10 focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none bg-white shadow-sm" 
+                                                        id="location" 
+                                                        name="location" 
+                                                        value={address}
+                                                        onChange={(e) => setAddress(e.target.value)}
+                                                        placeholder="Click on map to select location..." 
+                                                        type="text" 
+                                                        required
+                                                    />
+                                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                                       <button 
+                                                            type="button"
+                                                            className="text-green-600 hover:text-green-700 font-medium text-xs flex items-center gap-1"
+                                                            onClick={() => {
+                                                                if (navigator.geolocation) {
+                                                                    navigator.geolocation.getCurrentPosition((pos) => {
+                                                                        setMarkerPos([pos.coords.latitude, pos.coords.longitude]);
+                                                                        setMapCenter([pos.coords.latitude, pos.coords.longitude]);
+                                                                        // Reverse geocode
+                                                                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
+                                                                            .then(res => res.json())
+                                                                            .then(data => data.display_name && setAddress(data.display_name));
+                                                                    });
+                                                                }
+                                                            }}
+                                                        >
+                                                           <span className="material-icons-outlined text-sm">my_location</span>
+                                                           My Location
+                                                       </button>
+                                                    </div>
                                                 </div>
-                                                <input 
-                                                    className="block w-full rounded-md border-gray-300 pl-10 focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none" 
-                                                    id="location" 
-                                                    name="location" 
-                                                    placeholder="Enter address or landmark" 
-                                                    type="text" 
-                                                />
-                                                <button className="absolute inset-y-0 right-0 flex items-center pr-3 text-green-600 hover:text-green-700 font-medium text-xs" type="button">
-                                                    Use Current Location
-                                                </button>
-                                            </div>
-                                            <div className="mt-2 h-32 bg-gray-100 rounded-md border border-gray-200 flex items-center justify-center text-gray-400 text-sm">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <span className="material-icons-outlined">map</span>
-                                                    <span>Map Preview</span>
+
+                                                {/* Leaflet Map */}
+                                                <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0 relative">
+                                                    <MapContainer 
+                                                        center={mapCenter} 
+                                                        zoom={13} 
+                                                        style={{ height: '100%', width: '100%', zIndex: 0 }}
+                                                    >
+                                                        <TileLayer
+                                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                        />
+                                                        <LocationMarker position={markerPos} setPosition={setMarkerPos} setAddress={setAddress} />
+                                                    </MapContainer>
                                                 </div>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <span className="material-icons-outlined text-sm">info</span>
+                                                    Click on the map to pin the exact service location.
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="md:col-span-2">
@@ -173,9 +443,15 @@ const PostRequest = () => {
                                     <button className="w-full sm:w-auto px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors" type="button">
                                         Save Draft
                                     </button>
-                                    <button className="w-full sm:w-auto px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center gap-2 transition-colors" type="submit">
-                                        <span className="material-icons-outlined text-sm">send</span>
-                                        Post Request
+                                    <button disabled={loading} className="w-full sm:w-auto px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" type="submit">
+                                        {loading ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        ) : (
+                                            <>
+                                                <span className="material-icons-outlined text-sm">send</span>
+                                                Post Request
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </form>

@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+    match /requests/{requestId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null && (
+          // Allow customer to update their own request
+          resource.data.customerId == request.auth.uid || 
+          // Allow provider to accept/update request if it's assigned to them (or open)
+          // For now, let's keep it simple for 'Open' requests or if specific logic is needed later
+          resource.data.status == 'Open' ||
+          resource.data.providerId == request.auth.uid
+      );
+      allow delete: if request.auth != null && resource.data.customerId == request.auth.uid;
+    }
+    match /support_tickets/{ticketId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+  }
+}

@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -16,10 +24,28 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', formData);
-    // Add logic here
+    setError('');
+    setLoading(true);
+    try {
+      const userCredential = await login(formData.email, formData.password);
+      
+      // Navigate based on role (fetched from AuthContext listener)
+      // Note: We might need a moment for the context to update the currentUser
+      // But typically onAuthStateChanged handles this.
+      // For immediate redirection, we can rely on ProtectedRoute logic or 
+      // fetch the doc again here if needed, but App.jsx routing handles most.
+      
+      toast.success("Welcome back!");
+      navigate('/dashboard'); 
+    } catch(err) {
+      setError('Failed to login. Please check your credentials.');
+      console.error(err);
+      toast.error('Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -99,19 +125,30 @@ const Login = () => {
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                     Password
                   </label>
-                  <div className="mt-1">
+                  <div className="mt-1 relative">
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
                       required
                       value={formData.password}
                       onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="appearance-none block w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm pr-10"
                       placeholder="••••••••"
                     />
+                    <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-500"
+                        onClick={() => setShowPassword(!showPassword)}
+                    >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  {error && <p className="text-sm text-red-500">{error}</p>}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -137,9 +174,17 @@ const Login = () => {
                 <div>
                   <button
                     type="submit"
-                    className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+                    disabled={loading}
+                    className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Sign in
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="animate-spin h-5 w-5 text-white" />
+                        Signing in...
+                      </div>
+                    ) : (
+                      "Sign in"
+                    )}
                   </button>
                 </div>
               </form>

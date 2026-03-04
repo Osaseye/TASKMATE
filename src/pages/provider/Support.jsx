@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Support = () => {
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,17 +22,37 @@ const Support = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.subject || !formData.message) {
+        toast.error("Please fill in all required fields");
+        return;
+    }
+
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-        setIsSubmitting(false);
+    try {
+        await addDoc(collection(db, "support_tickets"), {
+            userId: currentUser?.uid,
+            userEmail: currentUser?.email,
+            userName: currentUser?.displayName,
+            userRole: 'provider',
+            subject: formData.subject,
+            category: formData.category,
+            message: formData.message,
+            status: 'Open',
+            createdAt: serverTimestamp()
+        });
+
+        toast.success("Message sent! Our team will response within 24 hours.");
         setIsContactModalOpen(false);
         setFormData({ subject: '', category: 'general', message: '' });
-        toast.success("Message sent! Our team will response within 24 hours.");
-    }, 1500);
+    } catch (error) {
+        console.error("Error sending support ticket:", error);
+        toast.error("Failed to send message. Please try again.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const faqs = [

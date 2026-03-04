@@ -3,12 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 
 const InboundRequests = () => {
+    const { currentUser } = useAuth();
+    const { jobs } = useData();
     const [filter, setFilter] = useState('all');
 
-    // Mock Data for New Requests
-    const requests = [];
+    // Context Data for New Requests
+    // Show jobs that are 'Open' OR 'Pending' (assigned to me)
+    const requests = jobs.filter(j => 
+        j.status === 'Open' || 
+        (j.status === 'Pending' && j.providerId === currentUser?.uid)
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
@@ -51,7 +59,16 @@ const InboundRequests = () => {
                     {/* Requests List */}
                     <div className="space-y-4">
                         <AnimatePresence>
-                            {requests.map((req, idx) => (
+                            {requests.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <div className="bg-gray-100 p-4 rounded-full inline-block mb-4">
+                                        <span className="material-symbols-outlined text-4xl text-gray-400">hourglass_empty</span>
+                                    </div>
+                                    <h3 className="text-lg font-medium text-gray-900">No new requests found</h3>
+                                    <p className="text-gray-500">Check back later for new opportunities.</p>
+                                </div>
+                            ) : (
+                                requests.map((req, idx) => (
                                 <motion.article
                                     key={req.id}
                                     initial={{ opacity: 0, y: 20 }}
@@ -61,24 +78,30 @@ const InboundRequests = () => {
                                 >
                                     <div className="flex flex-col md:flex-row gap-5 items-start">
                                         {/* Icon */}
-                                        <div className={`size-14 rounded-xl ${req.color} flex-shrink-0 flex items-center justify-center`}>
-                                            <span className="material-symbols-outlined text-3xl">{req.icon}</span>
+                                        <div className="size-14 rounded-xl bg-orange-50 text-orange-600 flex-shrink-0 flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-3xl">
+                                                {req.serviceType?.toLowerCase().includes('clean') ? 'cleaning_services' : 
+                                                 req.serviceType?.toLowerCase().includes('repair') ? 'home_repair_service' : 'handyman'}
+                                            </span>
                                         </div>
 
                                         {/* Content */}
                                         <div className="flex-1 w-full">
                                             <div className="flex flex-wrap justify-between items-start mb-1">
-                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">{req.title}</h3>
-                                                {req.type === 'urgent' && (
+                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">{req.serviceType || req.title}</h3>
+                                                {/* Urgency Badge */}
+                                                {req.urgency === 'High' && (
                                                      <span className="bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-md border border-red-100">URGENT</span>
                                                 )}
                                             </div>
-                                            <p className="text-gray-500 text-sm mb-3">Req ID: #{req.id} • Posted {req.posted}</p>
+                                            <p className="text-gray-500 text-sm mb-3">
+                                                ID: #{req.id.substring(0, 6)} • Posted {req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : 'Recently'}
+                                            </p>
                                             
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
                                                 <div className="flex items-center gap-2 text-sm text-gray-700">
                                                     <span className="material-symbols-outlined text-lg text-gray-400">person</span>
-                                                    <span className="font-medium">{req.customer}</span>
+                                                    <span className="font-medium">{req.customerName || 'Customer'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-sm text-gray-700">
                                                     <span className="material-symbols-outlined text-lg text-gray-400">location_on</span>
@@ -95,7 +118,7 @@ const InboundRequests = () => {
                                         <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-4 mt-2 md:mt-0 pl-0 md:pl-4 md:border-l border-gray-100">
                                             <div className="text-right">
                                                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Est. Budget</p>
-                                                <p className="text-2xl font-black text-primary">{req.budget}</p>
+                                                <p className="text-2xl font-black text-primary">{req.budget || 'Negotiable'}</p>
                                             </div>
                                             <Link 
                                                 to={`/provider/requests/${req.id}`}
@@ -107,7 +130,7 @@ const InboundRequests = () => {
                                         </div>
                                     </div>
                                 </motion.article>
-                            ))}
+                            )))}
                         </AnimatePresence>
                     </div>
 

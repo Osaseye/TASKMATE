@@ -1,37 +1,76 @@
-import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { toast } from 'sonner';
 
 const ProviderProfile = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('About');
+    const [provider, setProvider] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // MOCK DATA
-    const provider = {
-        name: "Abubakar Musa",
-        role: "Professional Electrician",
-        verified: true,
-        location: "Ikeja, Lagos",
-        distance: "2.5km away",
-        avatar: "https://i.pravatar.cc/300?u=a042581f4e29026704d",
-        coverImage: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop",
-        rating: 4.9,
-        reviewCount: 142,
-        jobsCompleted: 315,
-        hourlyRate: "₦4,500",
-        about: "Certified electrical engineer with over 10 years of experience in residential and commercial installations. Specializing in fault finding, rewiring, and smart home setups. I prioritize safety and adhere strictly to regulations.",
-        skills: ["Fault Finding", "Rewiring", "Smart Home", "CCTV Installation", "Generator Repair"],
-        reviews: [
-            { user: "Tunde B.", rating: 5, date: "2 days ago", text: "Excellent service! Fixed my generator in no time. Very professional." },
-            { user: "Chioma A.", rating: 4, date: "1 week ago", text: "Good work, but arrived 15 mins late. The repair was perfect though." }
-        ],
-        portfolio: [
-            "https://images.unsplash.com/photo-1558402529-d2638a7023e9?w=500&auto=format&fit=crop&q=60",
-            "https://images.unsplash.com/photo-1544724569-5f546fd6dd2d?w=500&auto=format&fit=crop&q=60",
-            "https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?w=500&auto=format&fit=crop&q=60"
-        ]
-    };
+    useEffect(() => {
+        const fetchProvider = async () => {
+            try {
+                const docRef = doc(db, "users", id);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    // Transform data to match UI needs
+                    setProvider({
+                        id: docSnap.id,
+                        name: data.displayName || 'Provider',
+                        role: data.category || 'Service Provider',
+                        verified: data.isVerified || false,
+                        location: data.address || 'Location Hidden',
+                        distance: data.distance || 'Nearby', // Mock or calculate
+                        avatar: data.photoURL || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
+                        coverImage: data.banner || "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop",
+                        rating: data.rating || 'New',
+                        reviewCount:  data.reviews?.length || 0,
+                        jobsCompleted: data.jobsCompleted || 0,
+                        hourlyRate: data.hourlyRate ? `₦${Number(data.hourlyRate).toLocaleString()}` : "Negotiable",
+                        about: data.description || data.bio || "No description provided.",
+                        skills: data.services ? data.services.map(s => s.name) : [], 
+                        yearsOfExperience: data.yearsOfExperience || 'N/A', // Added
+                        category: data.category || 'Service Provider',
+                        reviews: data.reviews || [], // Expecting array of review objects
+                        portfolio: data.portfolio || []
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching provider details:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchProvider();
+        }
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+        );
+    }
+
+    if (!provider) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+                <p className="text-gray-500">Provider not found.</p>
+                <Link to="/customer/browse" className="text-green-600 font-bold hover:underline">Back to Browse</Link>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
@@ -128,12 +167,23 @@ const ProviderProfile = () => {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-lg font-bold text-gray-900 mb-3">Skills & Expertise</h3>
-                                                    <div className="flex flex-wrap gap-2">
+                                                    <div className="flex flex-wrap gap-2 mb-4">
                                                         {provider.skills.map((skill, idx) => (
                                                             <span key={idx} className="px-4 py-2 bg-gray-50 text-gray-700 rounded-xl text-sm font-semibold border border-gray-100">
                                                                 {skill}
                                                             </span>
                                                         ))}
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Occupation</span>
+                                                            <span className="block font-bold text-gray-900">{provider.category}</span>
+                                                        </div>
+                                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Experience</span>
+                                                            <span className="block font-bold text-gray-900">{provider.yearsOfExperience} Years</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -141,22 +191,27 @@ const ProviderProfile = () => {
 
                                         {activeTab === 'Reviews' && (
                                             <div className="space-y-4 animate-fade-in">
-                                                {provider.reviews.map((review, idx) => (
-                                                    <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-gray-900">{review.user}</div>
-                                                            <span className="text-xs text-gray-400">{review.date}</span>
+                                                {provider.reviews.length > 0 ? (
+                                                    provider.reviews.map((review, idx) => (
+                                                        <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="font-bold text-gray-900">{review.user || 'Anonymous'}</div>
+                                                                <span className="text-xs text-gray-400">{review.date || 'Recent'}</span>
+                                                            </div>
+                                                            <div className="flex items-center mb-2 text-yellow-500">
+                                                                {[...Array(5)].map((_, i) => (
+                                                                    <span key={i} className={`material-icons-outlined text-sm ${i < (review.rating || 0) ? 'text-yellow-500' : 'text-gray-300'}`}>star</span>
+                                                                ))}
+                                                            </div>
+                                                            <p className="text-gray-600 text-sm">{review.text || review.comment}</p>
                                                         </div>
-                                                        <div className="flex items-center mb-2 text-yellow-500">
-                                                            {[...Array(5)].map((_, i) => (
-                                                                <span key={i} className="material-icons-outlined text-sm">
-                                                                    {i < review.rating ? 'star' : 'star_border'}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                        <p className="text-gray-600 text-sm">{review.text}</p>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-8 text-gray-400">
+                                                        <span className="material-icons-outlined text-4xl mb-2">rate_review</span>
+                                                        <p>No reviews yet.</p>
                                                     </div>
-                                                ))}
+                                                )}
                                             </div>
                                         )}
 
@@ -183,11 +238,17 @@ const ProviderProfile = () => {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <button className="w-full py-4 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                        <button 
+                                            onClick={() => navigate('/customer/post-request', { state: { providerId: id, providerName: provider.name, category: provider.category } })}
+                                            className="w-full py-4 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                        >
                                             Request Service
                                             <span className="material-icons-outlined">arrow_forward</span>
                                         </button>
-                                        <button className="w-full py-4 bg-white text-gray-900 font-bold rounded-xl border-2 border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all flex items-center justify-center gap-2">
+                                        <button 
+                                            onClick={() => toast.info('Messaging feature coming soon!')}
+                                            className="w-full py-4 bg-white text-gray-900 font-bold rounded-xl border-2 border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all flex items-center justify-center gap-2"
+                                        >
                                             <span className="material-icons-outlined">chat_bubble_outline</span>
                                             Message Provider
                                         </button>

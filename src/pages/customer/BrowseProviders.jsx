@@ -1,13 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useData } from '../../context/DataContext';
 
 const BrowseProviders = () => {
+    const { getProviders } = useData();
+    const [providers, setProviders] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [priceRange, setPriceRange] = useState(50000);
+    const [selectedCategory, setSelectedCategory] = useState("All");
 
-    // Mock data for providers - EMPTY STATE
-    const providers = [];
+    useEffect(() => {
+        const fetchProviders = async () => {
+            setLoading(true);
+            const data = await getProviders(selectedCategory);
+            setProviders(data);
+            setLoading(false);
+        };
+        fetchProviders();
+    }, [selectedCategory, getProviders]);
+
+    const handleCategoryChange = (category) => {
+        setSelectedCategory(prev => prev === category ? 'All' : category);
+    };
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
@@ -55,7 +71,8 @@ const BrowseProviders = () => {
                                                     <input 
                                                         className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer" 
                                                         type="checkbox"
-                                                        defaultChecked={service === 'Plumbing'} 
+                                                        checked={selectedCategory === service}
+                                                        onChange={() => handleCategoryChange(service)}
                                                     />
                                                     <span className="ml-3 text-sm text-gray-600 group-hover:text-green-700 transition-colors">{service}</span>
                                                 </label>
@@ -147,46 +164,60 @@ const BrowseProviders = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                    {providers.map((provider) => (
+                                    {loading ? (
+                                        <div className="col-span-full py-20 text-center">
+                                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                                            <p className="mt-4 text-gray-500">Finding taskers near you...</p>
+                                        </div>
+                                    ) : providers.length === 0 ? (
+                                        <div className="col-span-full py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                                            <span className="material-icons-outlined text-4xl text-gray-300 mb-2">person_off</span>
+                                            <h3 className="text-lg font-bold text-gray-900">No providers found</h3>
+                                            <p className="text-gray-500">Try adjusting your filters or search for something else.</p>
+                                        </div>
+                                    ) : (
+                                        providers.map((provider) => (
                                         <div key={provider.id} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
                                             {/* Header */}
-                                            <div className="p-6 flex flex-col items-center">
+                                            <div className="p-6 flex flex-col items-center flex-1">
                                                 <div className="relative mb-4">
                                                     <div className="h-24 w-24 rounded-full p-1 bg-white shadow-sm border border-gray-100 group-hover:border-green-100 transition-colors">
                                                         <img 
-                                                            alt={provider.name} 
+                                                            alt={provider.displayName} 
                                                             className="h-full w-full rounded-full object-cover" 
-                                                            src={provider.image} 
+                                                            src={provider.photoURL || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`}
                                                         />
                                                     </div>
-                                                    {provider.isOnline && (
-                                                        <span className="absolute bottom-2 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-sm" title="Online"></span>
-                                                    )}
+                                                    <span className="absolute bottom-2 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-sm" title="Online"></span>
                                                 </div>
                                                 
-                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors">{provider.name}</h3>
-                                                <p className="text-sm font-medium text-green-600 mb-3">{provider.role}</p>
+                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors text-center">{provider.displayName || 'Unnamed Provider'}</h3>
+                                                <p className="text-sm font-medium text-green-600 mb-3 text-center">
+                                                    {provider.category || (provider.preferences && provider.preferences.length > 0 
+                                                        ? provider.preferences.slice(0, 2).join(', ') 
+                                                        : 'Service Provider')}
+                                                </p>
 
                                                 <div className="flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700 mb-4">
                                                     <span className="material-icons-outlined text-sm text-yellow-500">star</span>
-                                                    {provider.rating}
-                                                    <span className="text-yellow-600/60 font-medium ml-1">({provider.reviews})</span>
+                                                    {provider.rating || 'New'}
+                                                    <span className="text-yellow-600/60 font-medium ml-1">({provider.reviews || 0})</span>
                                                 </div>
 
-                                                <div className="w-full border-t border-gray-50 pt-4 space-y-3">
+                                                <div className="w-full border-t border-gray-50 pt-4 space-y-3 mt-auto">
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-500 flex items-center gap-2">
-                                                            <span className="material-icons-outlined text-gray-400 text-base">work_history</span>
-                                                            Experience
+                                                            <span className="material-icons-outlined text-gray-400 text-base">location_on</span>
+                                                            Location
                                                         </span>
-                                                        <span className="font-semibold text-gray-700">{provider.experience}</span>
+                                                        <span className="font-semibold text-gray-700 truncate max-w-[120px]">{provider.location || 'Remote'}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-500 flex items-center gap-2">
                                                             <span className="material-icons-outlined text-gray-400 text-base">payments</span>
                                                             Starting at
                                                         </span>
-                                                        <span className="font-semibold text-gray-900">{provider.price}</span>
+                                                        <span className="font-semibold text-gray-900">₦{Number(provider.baseRate || 5000).toLocaleString()}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -199,7 +230,7 @@ const BrowseProviders = () => {
                                                 </Link>
                                             </div>
                                         </div>
-                                    ))}
+                                    )))}
                                 </div>
 
                                 {/* Pagination */}

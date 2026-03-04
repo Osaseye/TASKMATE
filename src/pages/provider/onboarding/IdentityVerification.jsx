@@ -1,24 +1,111 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
+import { useProviderOnboarding } from '../../../context/ProviderOnboardingContext';
+import { db, storage, auth } from '../../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 const IdentityVerification = () => {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState({
-    idFront: null,
-    businessLicense: null
-  });
+  const { onboardingData, files, updateFiles } = useProviderOnboarding();
+  const [loading, setLoading] = useState(false);
+  
+  // Use files from context, defaulting to null if not set
+  const documents = {
+      idFront: files.idFront,
+      businessLicense: files.businessLicense
+  };
 
   const handleFileChange = (e, type) => {
     const file = e.target.files[0];
-    setDocuments(prev => ({ ...prev, [type]: file }));
+    if (file) {
+        updateFiles({ [type]: file });
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (documents.idFront) {
-      console.log('Uploading documents:', documents);
-      navigate('/provider/onboarding/status');
+    if (!documents.idFront) {
+        toast.error("Government ID is required");
+        return;
+    }
+
+    setLoading(true);
+    const toastId = toast.loading("Submitting your application...");
+
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("No authenticated user found");
+
+        const uploadFile = async (file, path) => {
+            if (!file) return null;
+            const storageRef = ref(storage, path);
+            await uploadBytes(storageRef, file);
+            return await getDownloadURL(storageRef);
+        };
+
+        // 1. Upload Profile Image (from Step 1)
+        let profileURL = null;
+        if (files.profileImage) {
+            profileURL = await uploadFile(files.profileImage, `profile_pictures/${user.uid}`);
+        }
+
+        // 2. Upload ID Documents
+        const idURL = await uploadFile(documents.idFront, `verification/${user.uid}/id_front`);
+        const licenseURL = await uploadFile(documents.businessLicense, `verification/${user.uid}/business_license`);
+
+        // 3. Prepare Data for Firestore
+        const providerData = {
+            // Professional Info
+            displayName: onboardingData.businessName || user.displayName, // Use business name as display name? Or keep strict?
+            businessName: onboardingData.businessName,
+            category: onboardingData.category,
+            description: onboardingData.description,
+            address: onboardingData.location && typeof onboardingData.location === 'string' ? onboardingData.location : onboardingData.address, // Make sure address is string
+            website: onboardingData.website,
+            yearsOfExperience: onboardingData.yearsOfExperience,
+            
+            // Service Details
+            serviceRadius: onboardingData.radius,
+            hourlyRate: onboardingData.hourlyRate,
+            availability: onboardingData.availability,
+            serviceLocation: {
+                lat: onboardingData.location[0],
+                lng: onboardingData.location[1]
+            },
+            
+            // Verification
+            verificationDocuments: {
+                idFront: idURL,
+                businessLicense: licenseURL
+            },
+            
+            // Meta
+            role: 'provider',
+            onboardingCompleted: true,
+            isVerified: false, // Pending admin approval
+            rating: 0,
+            jobsCompleted: 0,
+            updatedAt: serverTimestamp()
+        };
+
+        if (profileURL) {
+            providerData.photoURL = profileURL;
+        }
+
+        // 4. Update User Document
+        await updateDoc(doc(db, "users", user.uid), providerData);
+
+        toast.success("Application submitted successfully!", { id: toastId });
+        navigate('/provider/onboarding/status');
+
+    } catch (error) {
+        console.error("Submission error:", error);
+        toast.error("Failed to submit application: " + error.message, { id: toastId });
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -145,11 +232,11 @@ const IdentityVerification = () => {
               <button
                 type="submit"
                 className={`bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2
-                  ${!documents.idFront ? 'opacity-50 cursor-not-allowed hover:bg-primary hover:scale-100' : ''}`}
-                disabled={!documents.idFront}
+                  ${loading || !documents.idFront ? 'opacity-50 cursor-not-allowed hover:bg-primary hover:scale-100' : ''}`}
+                disabled={loading || !documents.idFront}
               >
-                Submit Application
-                <span className="material-symbols-outlined text-sm font-bold">check</span>
+                {loading ? 'Submitting...' : 'Submit Application'}
+                {loading ? <span className="material-symbols-outlined text-sm font-bold animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-sm font-bold">check</span>}
               </button>
             </div>
           </form>

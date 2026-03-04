@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import { auth } from '../../lib/firebase';
+import { reauthenticateWithCredential, updatePassword, EmailAuthProvider } from 'firebase/auth';
+import { Toaster, toast } from 'sonner';
 
 const ChangePassword = () => {
     const navigate = useNavigate();
@@ -37,12 +40,44 @@ const ChangePassword = () => {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
+        const user = auth.currentUser;
+        if (!user) {
+            setError("You must be logged in to change your password");
             setIsLoading(false);
+            return;
+        }
+
+        try {
+            // 1. Re-authenticate
+            const credential = EmailAuthProvider.credential(user.email, formData.currentPassword);
+            await reauthenticateWithCredential(user, credential);
+
+            // 2. Update Password
+            await updatePassword(user, formData.newPassword);
+
             setSuccess(true);
             setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        }, 1500);
+            toast.success("Password changed successfully");
+            
+            setTimeout(() => {
+                navigate('/provider/settings');
+            }, 2000);
+
+        } catch (error) {
+            console.error("Error changing password:", error);
+            if (error.code === 'auth/wrong-password') {
+                setError("Incorrect current password");
+            } else if (error.code === 'auth/weak-password') {
+                setError("Password is too weak");
+            } else if (error.code === 'auth/too-many-requests') {
+                setError("Too many attempts. Try again later.");
+            } else {
+                setError("Failed to change password: " + error.message);
+            }
+            toast.error(error.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const breadcrumbItems = [
@@ -53,6 +88,7 @@ const ChangePassword = () => {
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
             <ProviderSidebar />
+            <Toaster position="top-right" />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <ProviderMobileNavBar />

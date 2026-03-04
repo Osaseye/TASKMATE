@@ -1,14 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 
 const Earnings = () => {
-    // Mock Data
-    const transactions = [];
+    const { jobs } = useData();
+    const { currentUser } = useAuth();
 
-    const weeklyData = [0, 0, 0, 0, 0, 0, 0];
-    const maxVal = 1000; // Default max value
+    const { transactions, weeklyData, totalEarnings, totalCommission, maxVal } = useMemo(() => {
+        if (!currentUser) return { transactions: [], weeklyData: Array(7).fill(0), totalEarnings: 0, totalCommission: 0, maxVal: 1000 };
+
+        const completed = jobs.filter(job => 
+            job.providerId === currentUser.uid && 
+            (job.status === 'Completed' || job.status === 'Paid')
+        );
+
+        /* Calculate Totals */
+        const earnings = completed.reduce((acc, job) => acc + (Number(job.finalAmount) || 0), 0);
+        const commission = completed.reduce((acc, job) => acc + (Number(job.commission) || (Number(job.finalAmount) || 0) * 0.1), 0);
+
+        /* Weekly Data (Sun-Sat) */
+        const weekData = Array(7).fill(0);
+        completed.forEach(job => {
+            if (job.completedAt) {
+                const date = job.completedAt.toDate ? job.completedAt.toDate() : new Date(job.completedAt);
+                // Check if within last 7 days? Or just map to day of week?
+                // Visual indicates S M T W T F S. Let's map strict day of week.
+                const day = date.getDay();
+                weekData[day] += (Number(job.finalAmount) || 0);
+            }
+        });
+
+        const max = Math.max(...weekData, 1000);
+
+        /* Transactions List */
+        const txs = completed.map(job => ({
+            id: job.id,
+            type: 'credit', 
+            description: `Job: ${job.serviceType || job.title}`,
+            date: job.completedAt ? (job.completedAt.toDate ? job.completedAt.toDate().toLocaleDateString() : new Date(job.completedAt).toLocaleDateString()) : 'N/A',
+            amount: `₦${(Number(job.finalAmount) || 0).toLocaleString()}`,
+            status: 'Completed'
+        })).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        return { 
+            transactions: txs, 
+            weeklyData: weekData, 
+            totalEarnings: earnings, 
+            totalCommission: commission,
+            maxVal: max
+        };
+
+    }, [jobs, currentUser]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
@@ -49,7 +94,9 @@ const Earnings = () => {
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm font-bold opacity-80 mb-1">Outstanding Commission</p>
-                                <h2 className="text-4xl font-black mb-6">₦0.00</h2>
+                                <h2 className="text-4xl font-black mb-6">
+                                    {totalCommission.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+                                </h2>
                                 <button className="w-full py-3 bg-white text-red-600 font-bold rounded-xl shadow-md hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
                                     <span>Pay Commission</span>
                                     <span className="material-symbols-outlined text-lg">payments</span>
@@ -63,20 +110,24 @@ const Earnings = () => {
                                 <span className="material-symbols-outlined text-9xl">attach_money</span>
                             </div>
                             <div className="relative z-10">
-                                <p className="text-sm font-bold opacity-80 mb-1">Total Earnings (This Week)</p>
-                                <h2 className="text-4xl font-black mb-6">₦0.00</h2>
+                                <p className="text-sm font-bold opacity-80 mb-1">Total Earnings</p>
+                                <h2 className="text-4xl font-black mb-6">
+                                    {totalEarnings.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+                                </h2>
                                 <p className="text-sm font-medium opacity-80">
-                                    Your commission is 0 (10%).
+                                    Total Commission Owed: {totalCommission.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })} (10%)
                                 </p>
                             </div>
                         </div>
 
-                        {/* Recent Commissions Summary */}
+                        {/* Recent Commissions Summary (Weekly Chart) */}
                         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-500 mb-1">Commissions Owed Trend</p>
+                                <p className="text-sm font-medium text-gray-500 mb-1">Weekly Trend</p>
                                 <div className="flex items-end gap-2">
-                                    <h2 className="text-3xl font-bold text-gray-900">₦0.00</h2>
+                                    <h2 className="text-3xl font-bold text-gray-900">
+                                        {weeklyData.reduce((a, b) => a + b, 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+                                    </h2>
                                 </div>
                             </div>
                             {/* Chart */}
@@ -84,16 +135,20 @@ const Earnings = () => {
                                 {weeklyData.map((val, i) => (
                                     <div key={i} className="flex flex-col items-center gap-1 flex-1">
                                         <div 
-                                            className="w-full bg-red-100 hover:bg-red-200 rounded-t-md transition-all duration-300"
-                                            style={{ height: '0%' }}
-                                        ></div>
+                                            className="w-full bg-red-100 hover:bg-red-200 rounded-t-md transition-all duration-300 relative group"
+                                            style={{ height: `${(val / (maxVal || 1)) * 100}%` }}
+                                        >
+                                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {val.toLocaleString()}
+                                            </div>
+                                        </div>
                                         <span className="text-[10px] text-gray-400 font-medium">{'SMTWTFS'[i]}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                         {/* Limit Card */}
+                         {/* Limit Card (Assuming 10k Limit) */}
                          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                             <div className="flex items-start justify-between mb-4">
                                 <div>
@@ -109,9 +164,14 @@ const Earnings = () => {
                             </p>
                              <div className="mt-4 pt-4 border-t border-gray-100">
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                                    <div 
+                                        className={`h-2 rounded-full ${totalCommission > 8000 ? 'bg-red-500' : 'bg-green-500'}`} 
+                                        style={{ width: `${Math.min((totalCommission / 10000) * 100, 100)}%` }}
+                                    ></div>
                                 </div>
-                                <p className="text-xs text-right mt-1 text-gray-500 font-medium">0% Used</p>
+                                <p className="text-xs text-right mt-1 text-gray-500 font-medium">
+                                    {Math.min((totalCommission / 10000) * 100, 100).toFixed(1)}% Used
+                                </p>
                             </div>
                         </div>
                     </div>

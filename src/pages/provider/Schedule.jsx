@@ -5,8 +5,12 @@ import { Link } from 'react-router-dom';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 
 const Schedule = () => {
+    const { jobs: allJobs } = useData();
+    const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('upcoming');
 
     const breadcrumbItems = [
@@ -27,39 +31,49 @@ const Schedule = () => {
         }
     };
 
-    const scheduleData = {
-        upcoming: [
-            {
-                date: 'Today, 24 Oct',
-                jobs: [
-                    { id: 1, title: 'Inverter Installation', customer: 'Mr. David O.', time: '10:00 AM - 12:00 PM', address: '12 Admiralty Way, Lekki', status: 'confirmed', price: '₦25,000', type: 'Electrical' },
-                    { id: 2, title: 'Generator Service', customer: 'Mrs. Funke A.', time: '02:00 PM - 03:30 PM', address: '45 Bode Thomas, Surulere', status: 'pending', price: '₦8,000', type: 'Mechanical' },
-                ]
-            },
-            {
-                date: 'Tomorrow, 25 Oct',
-                jobs: [
-                    { id: 3, title: 'House Wiring Check', customer: 'Engr. Wale', time: '09:00 AM - 01:00 PM', address: 'Ikeja GRA', status: 'confirmed', price: '₦40,000', type: 'Electrical' }
-                ]
-            }
-        ],
-        pending: [
-            {
-                date: 'Pending Requests',
-                jobs: [
-                    { id: 4, title: 'AC Filter Cleaning', customer: 'Hotel Ibis', time: 'Requested: 26 Oct', address: 'Ikeja', status: 'awaiting', price: '₦12,000', type: 'Cleaning' }
-                ]
-            }
-        ],
-        history: [
-             {
-                date: 'Yesterday, 23 Oct',
-                jobs: [
-                    { id: 5, title: 'Socket Replacement', customer: 'Sarah J.', time: 'Completed: 04:00 PM', address: 'Yaba', status: 'completed', price: '₦5,000', type: 'Electrical' }
-                ]
-            }
-        ]
+    // Filter jobs assigned to me
+    const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
+
+    // Helper to format date groups
+    const groupByDate = (jobsList) => {
+        const groups = {};
+        jobsList.forEach(job => {
+            const dateObj = job.createdAt?.seconds ? new Date(job.createdAt.seconds * 1000) : new Date();
+            const date = dateObj.toDateString();
+            
+            if (!groups[date]) groups[date] = [];
+            
+            const timeStart = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            groups[date].push({
+                id: job.id,
+                title: job.title || job.serviceType || 'Service Request',
+                customer: job.customerName || 'Customer',
+                time: `${timeStart} - Est.`, // Format to prevent crash on split('-')
+                address: job.location || 'No address',
+                status: job.status?.toLowerCase() || 'pending',
+                price: job.budget || '—',
+                type: job.category || 'General'
+            });
+        });
+        
+        // Convert to array
+        return Object.keys(groups).map(date => ({ 
+            date, 
+            jobs: groups[date] 
+        }));
     };
+
+    const upcomingJobs = myJobs.filter(j => ['confirmed', 'scheduled', 'in-progress', 'in progress', 'started'].includes(j.status?.toLowerCase()));
+    const pendingJobs = myJobs.filter(j => ['pending', 'awaiting', 'open'].includes(j.status?.toLowerCase()));
+    const historyJobs = myJobs.filter(j => ['completed', 'cancelled'].includes(j.status?.toLowerCase()));
+
+    const scheduleData = {
+        upcoming: groupByDate(upcomingJobs),
+        pending: groupByDate(pendingJobs),
+        history: groupByDate(historyJobs)
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">

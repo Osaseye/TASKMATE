@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/');
+    };
 
     const toggleSidebar = () => {
         setIsCollapsed(!isCollapsed);
@@ -57,13 +65,13 @@ const Sidebar = () => {
                         </li>
                     ))}
                      <li>
-                        <Link 
-                            to="#" 
-                            className={`flex items-center gap-3 rounded-lg px-4 py-3 text-red-500 hover:bg-red-50 transition-colors ${isCollapsed ? 'justify-center px-2' : ''}`}
+                        <button 
+                            onClick={handleLogout}
+                            className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-red-500 hover:bg-red-50 transition-colors ${isCollapsed ? 'justify-center px-2' : ''}`}
                         >
                             <span className="material-icons-outlined text-xl">logout</span>
                             {!isCollapsed && <span>Logout</span>}
-                        </Link>
+                        </button>
                     </li>
                 </ul>
             </nav>

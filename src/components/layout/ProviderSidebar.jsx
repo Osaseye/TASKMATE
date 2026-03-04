@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const ProviderSidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const location = useLocation();
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/')
+    };
 
     const toggleSidebar = () => {
         setIsCollapsed(!isCollapsed);
@@ -62,13 +70,13 @@ const ProviderSidebar = () => {
             </nav>
 
             <div className="p-4 border-t border-gray-100">
-                <Link 
-                    to="/" 
-                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-red-500 hover:bg-red-50 transition-colors ${isCollapsed ? 'justify-center px-2' : ''}`}
+                <button 
+                    onClick={handleLogout}
+                    className={`nav-link font-medium text-red-600 hover:bg-red-50 flex items-center w-full ${isCollapsed ? 'justify-center p-2' : 'px-4 py-3 gap-3'} rounded-xl transition-all`}
                 >
-                    <span className="material-symbols-outlined text-xl">logout</span>
+                    <span className="material-icons-outlined text-xl">logout</span>
                     {!isCollapsed && <span>Logout</span>}
-                </Link>
+                </button>
              </div>
 
              {isCollapsed && (

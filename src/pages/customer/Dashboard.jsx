@@ -107,32 +107,32 @@ const Dashboard = () => {
                              <div className="lg:col-span-2 space-y-8">
                                 
                                 {/* Stats Cards */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-                                        <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                                            <span className="material-icons-outlined">pending_actions</span>
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                    <div className="col-span-1 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
+                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                                            <span className="material-icons-outlined text-lg md:text-xl">pending_actions</span>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-gray-500">Active Tasks</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">{activeTasksCount}</h3>
+                                            <p className="text-xs md:text-sm font-medium text-gray-500">Active Tasks</p>
+                                            <h3 className="text-xl md:text-2xl font-bold text-gray-900">{activeTasksCount}</h3>
                                         </div>
                                     </div>
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-                                        <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                            <span className="material-icons-outlined">task_alt</span>
+                                    <div className="col-span-1 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
+                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                            <span className="material-icons-outlined text-lg md:text-xl">task_alt</span>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-gray-500">Completed</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">{completedTasksCount}</h3>
+                                            <p className="text-xs md:text-sm font-medium text-gray-500">Completed</p>
+                                            <h3 className="text-xl md:text-2xl font-bold text-gray-900">{completedTasksCount}</h3>
                                         </div>
                                     </div>
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-                                        <div className="h-12 w-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-                                            <span className="material-icons-outlined">account_balance_wallet</span>
+                                    <div className="col-span-2 lg:col-span-1 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
+                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                                            <span className="material-icons-outlined text-lg md:text-xl">account_balance_wallet</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Total Spent</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">₦{totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                        <div className="min-w-0 w-full">
+                                            <p className="text-xs md:text-sm font-medium text-gray-500">Total Spent</p>
+                                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 truncate">₦{totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                                         </div>
                                     </div>
                                 </div>

@@ -16,6 +16,7 @@ const AIChat = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const constraintsRef = useRef(null);
 
     // Scroll to bottom
     useEffect(() => {
@@ -96,23 +97,30 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
     };
 
     return (
-        <>
+        <div className="fixed inset-0 pointer-events-none z-[100]" ref={constraintsRef}>
             {/* Floating Action Button */}
-            <button
+            <motion.button
+                drag
+                dragConstraints={constraintsRef}
+                dragElastic={0.1}
+                dragMomentum={false}
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed bottom-6 right-6 z-50 p-4 bg-primary text-white rounded-full shadow-xl hover:bg-primary-dark transition-all transform hover:scale-105 flex items-center justify-center group"
+                className="absolute bottom-6 right-6 p-3 bg-primary text-white rounded-full shadow-xl hover:bg-primary-dark transition-colors flex items-center justify-center group pointer-events-auto active:cursor-grabbing"
+                style={{ touchAction: "none" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
             >
                 {isOpen ? (
                     <span className="material-symbols-outlined text-2xl">close</span>
                 ) : (
-                    <span className="material-symbols-outlined text-2xl">smart_toy</span>
+                    <img src="/icon.png" alt="AI" className="w-8 h-8 object-contain brightness-0 invert pointer-events-none" />
                 )}
                  {!isOpen && (
-                    <span className="absolute right-full mr-3 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    <span className="hidden md:block absolute right-full mr-3 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         Ask AI
                     </span>
                  )}
-            </button>
+            </motion.button>
 
             {/* Chat Window */}
             <AnimatePresence>
@@ -122,12 +130,12 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed bottom-24 right-6 z-50 w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col sm:w-[380px] h-[500px]"
+                        className="absolute bottom-24 right-4 w-[calc(100vw-32px)] max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col h-[500px] sm:right-6 sm:w-[380px] pointer-events-auto"
                     >
                         {/* Header */}
                         <div className="bg-primary p-4 flex items-center justify-between text-white">
                             <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined">smart_toy</span>
+                                <img src="/icon.png" alt="AI" className="w-6 h-6 object-contain brightness-0 invert" />
                                 <h3 className="font-bold">TaskMate Assistant</h3>
                             </div>
                             <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 rounded-full p-1">
@@ -190,7 +198,7 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                     </motion.div>
                 )}
             </AnimatePresence>
-        </>
+        </div>
     );
 };
 

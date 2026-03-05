@@ -31,3 +31,4 @@ dist-ssr
 
 # Vercel
 vercel.ignore
+.env*.local

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-const AdminSidebar = ({ isCollapsed, toggleCollapse }) => {
+const AdminSidebar = ({ isCollapsed, toggleCollapse, isOpen, onClose }) => {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -22,20 +22,24 @@ const AdminSidebar = ({ isCollapsed, toggleCollapse }) => {
 
     return (
         <aside 
-            className={`hidden md:flex flex-col bg-white border-r border-gray-200 h-screen fixed left-0 top-0 z-50 transition-all duration-300 ${
-                isCollapsed ? 'w-20' : 'w-64'
+            className={`flex flex-col bg-white border-r border-gray-200 h-screen fixed left-0 top-0 z-50 transition-all duration-300 ${
+                isCollapsed ? 'md:w-20' : 'w-64'
+            } ${
+                isOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'
             }`}
         >
-            <div className={`flex items-center h-20 px-6 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+            <div className={`flex items-center h-20 px-6 ${isCollapsed && !isOpen ? 'justify-center' : 'justify-between'}`}>
                  <div className="flex items-center justify-center gap-2">
                     <img alt="TaskMate Icon" className="h-8 w-8 object-contain rounded-lg" src="/icon.png" />
-                    {!isCollapsed && <span className="font-display font-bold text-gray-900 text-lg">TaskMate Admin</span>}
+                    {!(isCollapsed && !isOpen) && <span className="font-display font-bold text-gray-900 text-lg">TaskMate Admin</span>}
                 </div>
                  <button 
-                    onClick={toggleCollapse}
-                    className={`p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors ${isCollapsed ? 'hidden' : 'block'}`}
+                    onClick={isOpen ? onClose : toggleCollapse}
+                    className={`p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors ${(isCollapsed && !isOpen) ? 'hidden' : 'block'}`}
                 >
-                    <span className="material-icons-outlined text-xl">chevron_left</span>
+                    <span className="material-icons-outlined text-xl">
+                        {isOpen ? 'close' : 'chevron_left'}
+                    </span>
                 </button>
             </div>
 
@@ -48,15 +52,16 @@ const AdminSidebar = ({ isCollapsed, toggleCollapse }) => {
                             <li key={item.label}>
                                 <Link 
                                     to={item.path} 
+                                    onClick={() => { if(isOpen) onClose(); }}
                                     className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-colors ${
                                         isActive 
                                             ? 'bg-green-50 text-green-700 font-medium' 
                                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                                    } ${isCollapsed ? 'justify-center px-2' : ''}`}
-                                    title={isCollapsed ? item.label : ''}
+                                    } ${(isCollapsed && !isOpen) ? 'justify-center px-2' : ''}`}
+                                    title={(isCollapsed && !isOpen) ? item.label : ''}
                                 >
                                     <span className="material-icons-outlined text-xl">{item.icon}</span>
-                                    {!isCollapsed && <span>{item.label}</span>}
+                                    {!(isCollapsed && !isOpen) && <span>{item.label}</span>}
                                 </Link>
                             </li>
                         );
@@ -67,15 +72,15 @@ const AdminSidebar = ({ isCollapsed, toggleCollapse }) => {
             <div className="p-4 border-t border-gray-100">
                 <button 
                     onClick={handleLogout}
-                    className={`nav-link font-medium text-red-600 hover:bg-red-50 flex items-center w-full ${isCollapsed ? 'justify-center p-2' : 'px-4 py-3 gap-3'} rounded-xl transition-all`}
-                    title={isCollapsed ? "Logout" : ""}
+                    className={`nav-link font-medium text-red-600 hover:bg-red-50 flex items-center w-full ${(isCollapsed && !isOpen) ? 'justify-center p-2' : 'px-4 py-3 gap-3'} rounded-xl transition-all`}
+                    title={(isCollapsed && !isOpen) ? "Logout" : ""}
                 >
                     <span className="material-icons-outlined text-xl">logout</span>
-                    {!isCollapsed && <span>Logout</span>}
+                    {!(isCollapsed && !isOpen) && <span>Logout</span>}
                 </button>
             </div>
 
-             {isCollapsed && (
+             {(isCollapsed && !isOpen) && (
                 <div className="p-4 flex justify-center">
                     <button 
                         onClick={toggleCollapse}

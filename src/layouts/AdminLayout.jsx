@@ -18,6 +18,8 @@ const AdminLayout = () => {
             <AdminSidebar 
                 isCollapsed={sidebarCollapsed} 
                 toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
             />
             
             {/* Mobile Sidebar Overlay */}

@@ -5,11 +5,24 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import Tutorial from '../../components/ui/Tutorial';
 
 const SavedProviders = () => {
     const { savedProviderIds, toggleSavedProvider } = useData();
     const [savedProviders, setSavedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const tutorialSteps = [
+        {
+            target: '#tour-saved-providers-grid',
+            content: 'These are the providers you have saved for later. You can view their profiles or remove them from this list.',
+            disableBeacon: true,
+        },
+        {
+            target: '#tour-browse-more',
+            content: 'Click here to find and save more service providers.',
+        }
+    ];
 
     useEffect(() => {
         const fetchSavedProviders = async () => {
@@ -54,6 +67,7 @@ const SavedProviders = () => {
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
             <Sidebar />
+            <Tutorial steps={tutorialSteps} tutorialKey="customerSavedProviders" />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <div className="flex-1 overflow-y-auto">
@@ -65,7 +79,7 @@ const SavedProviders = () => {
                                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Saved Providers</h1>
                                 <p className="mt-1 text-sm text-gray-500">Service professionals you've bookmarked for later.</p>
                             </div>
-                            <Link to="/customer/browse" className="hidden sm:inline-flex items-center text-sm font-bold text-green-600 hover:text-green-700">
+                            <Link to="/customer/browse" id="tour-browse-more" className="hidden sm:inline-flex items-center text-sm font-bold text-green-600 hover:text-green-700">
                                 Browse more
                                 <span className="material-icons-outlined text-lg ml-1">arrow_forward</span>
                             </Link>
@@ -78,7 +92,7 @@ const SavedProviders = () => {
                                 ))}
                              </div>
                         ) : savedProviders.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="tour-saved-providers-grid">
                                 {savedProviders.map((provider) => (
                                     <div key={provider.id} className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 border border-gray-100 transition-all duration-300 relative flex flex-col">
                                         

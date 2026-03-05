@@ -21,6 +21,7 @@ const Sidebar = () => {
         { icon: 'search', label: 'Find Providers', href: '/customer/browse' },
         { icon: 'list_alt', label: 'My Requests', href: '/customer/requests' }, 
         { icon: 'favorite_border', label: 'Saved Providers', href: '/customer/saved' },
+        { icon: 'group_add', label: 'Invite Friends', href: '/customer/invite' },
         { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];
 

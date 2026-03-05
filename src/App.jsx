@@ -10,6 +10,7 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 // Customer Pages
 import Onboarding from './pages/customer/Onboarding';
+import InviteFriends from './pages/customer/InviteFriends';
 import Dashboard from './pages/customer/Dashboard';
 import PostRequest from './pages/customer/PostRequest';
 import BrowseProviders from './pages/customer/BrowseProviders';
@@ -22,6 +23,7 @@ import MyRequests from './pages/customer/MyRequests';
 
 // Provider Pages
 import ProfessionalInfo from './pages/provider/onboarding/ProfessionalInfo';
+import ProviderInviteFriends from './pages/provider/InviteFriends';
 import ServiceDetails from './pages/provider/onboarding/ServiceDetails';
 import IdentityVerification from './pages/provider/onboarding/IdentityVerification';
 import OnboardingStatus from './pages/provider/onboarding/OnboardingStatus';
@@ -82,6 +84,7 @@ function AnimatedRoutes() {
         <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
         <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
+        <Route path="/customer/invite" element={<ProtectedRoute allowedRoles={['customer']}><InviteFriends /></ProtectedRoute>} />
 
         {/* Provider Onboarding Routes */}
         <Route path="/provider/onboarding" element={<ProtectedRoute allowedRoles={['provider']}><Navigate to="/provider/onboarding/step-1" replace /></ProtectedRoute>} />
@@ -104,6 +107,7 @@ function AnimatedRoutes() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/provider/schedule" element={<Schedule />} />
+        <Route path="/provider/invite" element={<ProtectedRoute allowedRoles={['provider']}><ProviderInviteFriends /></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />

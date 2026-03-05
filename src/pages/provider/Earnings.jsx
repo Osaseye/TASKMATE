@@ -6,11 +6,24 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
+import Tutorial from '../../components/ui/Tutorial';
 
 const Earnings = () => {
     const { jobs } = useData();
     const { currentUser } = useAuth();
     const [commissionBalance, setCommissionBalance] = useState(0);
+
+    const tutorialSteps = [
+        {
+            target: '#tour-commission-block',
+            content: 'Keep track of your total earnings, outstanding commission balances, and view your weekly trends.',
+            disableBeacon: true,
+        },
+        {
+            target: '#tour-transactions-list',
+            content: 'View your complete commission and payment history, and see details of each transaction.',
+        }
+    ];
 
     // Fetch live commission balance from user profile
     useEffect(() => {
@@ -121,6 +134,7 @@ const Earnings = () => {
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
             <ProviderSidebar />
             <ProviderMobileNavBar />
+            <Tutorial steps={tutorialSteps} tutorialKey="providerEarnings" />
 
             <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
                 {/* Header */}
@@ -148,7 +162,7 @@ const Earnings = () => {
                     </div> */}
 
                     {/* Balance Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="tour-commission-block">
                         {/* Outstanding Balance Card */}
                         <div className="bg-red-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -239,7 +253,7 @@ const Earnings = () => {
                     </div>
 
                     {/* Transaction History */}
-                    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm" id="tour-transactions-list">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-gray-900">Commission History</h3>
                             <button className="text-sm font-bold text-gray-500 hover:text-gray-900">View All</button>

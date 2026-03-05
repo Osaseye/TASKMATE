@@ -5,11 +5,24 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import Tutorial from '../../components/ui/Tutorial';
 
 const MyJobs = () => {
     const { jobs: allJobs } = useData();
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
+
+    const tutorialSteps = [
+        {
+            target: '#tour-provider-jobs-tabs',
+            content: 'Switch between your active ongoing jobs and those you have already completed or canceled.',
+            disableBeacon: true,
+        },
+        {
+            target: '#tour-provider-jobs-list',
+            content: 'Here are the details for your assigned jobs. Click "View Details" to update the job status or communicate with the customer.',
+        }
+    ];
 
     // Filter jobs assigned to current provider
     const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
@@ -22,6 +35,7 @@ const MyJobs = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+            <Tutorial steps={tutorialSteps} tutorialKey="providerJobs" />
             <ProviderSidebar />
             <ProviderMobileNavBar />
 
@@ -39,7 +53,7 @@ const MyJobs = () => {
 
                 <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
                     {/* Tabs */}
-                    <div className="border-b border-gray-200">
+                    <div className="border-b border-gray-200" id="tour-provider-jobs-tabs">
                         <div className="flex gap-8 overflow-x-auto no-scrollbar">
                             <button 
                                 onClick={() => setActiveTab('active')}
@@ -59,7 +73,7 @@ const MyJobs = () => {
                     </div>
 
                     {/* Jobs List */}
-                    <div className="space-y-4">
+                    <div className="space-y-4" id="tour-provider-jobs-list">
                         <AnimatePresence mode="wait">
                             {displayJobs.length === 0 ? (
                                 <motion.div 

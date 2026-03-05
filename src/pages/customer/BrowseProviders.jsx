@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
+import Tutorial from '../../components/ui/Tutorial';
 
 const BrowseProviders = () => {
     const { getProviders, savedProviderIds, toggleSavedProvider } = useData();
@@ -10,6 +11,26 @@ const BrowseProviders = () => {
     const [loading, setLoading] = useState(true);
     const [priceRange, setPriceRange] = useState(50000);
     const [selectedCategory, setSelectedCategory] = useState("All");
+
+    const tutorialSteps = [
+        {
+            target: '#tour-search-providers',
+            content: 'Use this search bar to quickly find providers by name or specific skills.',
+            disableBeacon: true,
+        },
+        {
+            target: '#tour-filter-sidebar',
+            content: 'Filter providers by service type, minimum rating, or price range to narrow down your options.',
+        },
+        {
+            target: '#tour-sort-options',
+            content: 'Sort the results by recommended, highest rated, or lowest price.',
+        },
+        {
+            target: '#tour-provider-list',
+            content: 'Here are the providers matching your criteria. Click on a provider to view their full profile or heart icon to save them for later.',
+        }
+    ];
 
     useEffect(() => {
         const fetchProviders = async () => {
@@ -28,6 +49,7 @@ const BrowseProviders = () => {
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
             <Sidebar />
+            <Tutorial steps={tutorialSteps} tutorialKey="customerFindProviders" />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
                 {/* Header (Simplified for Mobile) */}
@@ -52,7 +74,7 @@ const BrowseProviders = () => {
                         <div className="flex flex-col lg:flex-row gap-8">
                             {/* Filter Sidebar */}
                             <aside className="w-full lg:w-64 flex-shrink-0 space-y-6">
-                                <div className="relative">
+                                <div className="relative" id="tour-search-providers">
                                     <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                                     <input 
                                         className="block w-full rounded-lg border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm focus:border-green-600 focus:ring-green-600 focus:bg-white transition-colors outline-none shadow-sm border" 
@@ -61,7 +83,7 @@ const BrowseProviders = () => {
                                     />
                                 </div>
 
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6" id="tour-filter-sidebar">
                                     {/* Service Type */}
                                     <div>
                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Service Type</h3>
@@ -153,7 +175,7 @@ const BrowseProviders = () => {
                             <div className="flex-1">
                                 <div className="mb-6 flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:bg-transparent lg:p-0 lg:border-0 lg:shadow-none">
                                     <span className="text-sm font-medium text-gray-700">Showing <span className="text-green-700 font-bold">{providers.length}</span> results</span>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2" id="tour-sort-options">
                                         <span className="hidden sm:inline text-sm text-gray-500">Sort by:</span>
                                         <select className="rounded-lg border-gray-200 bg-gray-50 py-1.5 pl-3 pr-8 text-sm focus:border-green-600 focus:ring-green-600 cursor-pointer outline-none">
                                             <option>Recommended</option>
@@ -163,7 +185,7 @@ const BrowseProviders = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" id="tour-provider-list">
                                     {loading ? (
                                         <div className="col-span-full py-20 text-center">
                                             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>

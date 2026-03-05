@@ -5,9 +5,18 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { format } from 'date-fns';
+import Tutorial from '../../components/ui/Tutorial';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    
+    const tutorialSteps = [
+        { target: '#tour-search', content: 'Use this search bar to quickly find the services or providers you need.', disableBeacon: true },
+        { target: '#tour-ai', content: 'Meet your personal AI assistant! Click here to get instant help with your tasks or questions.', disableBeacon: false },
+        { target: '#tour-stats', content: 'Here you can view a summary of your active tasks, completed tasks, and total spent.' },
+        { target: '#tour-recommended', content: 'Discover top-rated professionals recommended just for you based on your needs.' },
+        { target: '#tour-new-request', content: 'Click here whenever you are ready to post a new service request.' }
+    ];
     const { currentUser } = useAuth();
     const { requests, getProviders } = useData();
     const [activeTab, setActiveTab] = useState('All');
@@ -58,6 +67,7 @@ const Dashboard = () => {
 
     return (
         <div className="flex min-h-screen bg-[#F8F9FA] font-sans text-gray-900" onClick={() => setOpenDropdown(null)}>
+            <Tutorial steps={tutorialSteps} tutorialKey="customerDashboard" />
             {/* Sidebar Component */}
             <Sidebar />
 
@@ -89,6 +99,7 @@ const Dashboard = () => {
                                 <div className="relative group">
                                     <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors">search</span>
                                     <input 
+                                        id="tour-search"
                                         className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 transition-all md:w-72 shadow-sm" 
                                         placeholder="Find a service..." 
                                         type="text" 
@@ -107,7 +118,7 @@ const Dashboard = () => {
                              <div className="lg:col-span-2 space-y-8">
                                 
                                 {/* Stats Cards */}
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                <div id="tour-stats" className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                                     <div className="col-span-1 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
                                         <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
                                             <span className="material-icons-outlined text-lg md:text-xl">pending_actions</span>
@@ -156,6 +167,7 @@ const Dashboard = () => {
                                                 ))}
                                             </div>
                                             <Link 
+                                                id="tour-new-request"
                                                 to="/customer/post-request"
                                                 className="flex items-center gap-2 rounded-xl bg-green-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-green-800 shadow-lg shadow-green-700/20 transition-all hover:scale-105"
                                             >
@@ -323,7 +335,7 @@ const Dashboard = () => {
                          </div>
 
                         {/* 5. Recommendations (Redesigned) */}
-                        <section>
+                        <section id="tour-recommended">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-900">Recommended For You</h2>

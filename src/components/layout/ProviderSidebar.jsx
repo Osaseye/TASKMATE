@@ -22,6 +22,7 @@ const ProviderSidebar = () => {
         { icon: 'assignment', label: 'Requests', href: '/provider/requests' },
         { icon: 'work', label: 'My Jobs', href: '/provider/jobs' },
         { icon: 'payments', label: 'Earnings', href: '/provider/earnings' },
+        { icon: 'group_add', label: 'Invite Friends', href: '/provider/invite' },
         { icon: 'person', label: 'Profile', href: '/provider/profile' },
         { icon: 'settings', label: 'Settings', href: '/provider/settings' },
     ];

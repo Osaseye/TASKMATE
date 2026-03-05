@@ -6,8 +6,15 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import Tutorial from '../../components/ui/Tutorial';
 
 const ProviderDashboard = () => {
+    const tutorialSteps = [
+        { target: '#tour-availability', content: 'Let customers know if you are accepting requests today.' },
+        { target: '#tour-earnings', content: 'Keep an eye on your commission and balances here.' },
+        { target: '#tour-activity', content: 'Watch this area for your latest job requests.' }
+    ];
+
     const { currentUser } = useAuth();
     const { jobs } = useData();
     
@@ -67,6 +74,7 @@ const ProviderDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+      <Tutorial steps={tutorialSteps} tutorialKey="providerDashboard" />
       {/* Provider Sidebar */}
       <ProviderSidebar />
 
@@ -129,7 +137,7 @@ const ProviderDashboard = () => {
             )}
 
             {/* 2. Availability Toggle (Only visible/active if Verified, else disabled) */}
-             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div id="tour-availability" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
                     <p className="text-sm text-gray-500">Welcome back! Here's what's happening today.</p>
@@ -145,7 +153,7 @@ const ProviderDashboard = () => {
             </div>
 
             {/* 3. Stats Grid (Locked State applied via className) */}
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${!isVerified ? 'opacity-60 pointer-events-none select-none grayscale-[0.5]' : ''}`}>
+            <div id="tour-earnings" className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${!isVerified ? 'opacity-60 pointer-events-none select-none grayscale-[0.5]' : ''}`}>
                {/* Earnings Card */}
                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between h-48 relative overflow-hidden group">
                   <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -342,7 +350,7 @@ const ProviderDashboard = () => {
                     </div>
 
                     {/* Recent Activity Timeline */}
-                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+                    <div id="tour-activity" className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
                         <h3 className="font-bold text-gray-900 mb-4">Recent Activity</h3>
                         <div className="space-y-4">
                             {activities.length > 0 ? (

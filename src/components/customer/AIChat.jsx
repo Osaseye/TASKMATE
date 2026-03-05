@@ -100,6 +100,7 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
         <div className="fixed inset-0 pointer-events-none z-[100]" ref={constraintsRef}>
             {/* Floating Action Button */}
             <motion.button
+                id="tour-ai"
                 drag
                 dragConstraints={constraintsRef}
                 dragElastic={0.1}

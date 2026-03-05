@@ -5,11 +5,24 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import Tutorial from '../../components/ui/Tutorial';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const [filter, setFilter] = useState('all');
+
+    const tutorialSteps = [
+        {
+            target: '#tour-request-filters',
+            content: 'Use these filters to easily search for specific requests or sort them based on your preferences.',
+            disableBeacon: true,
+        },
+        {
+            target: '#tour-request-list',
+            content: 'Here you can see all available customer requests. Click "View Details" to see more information or accept the job.',
+        }
+    ];
 
     // Context Data for New Requests
     // Show jobs that are 'Open' OR 'Pending' (assigned to me)
@@ -22,6 +35,7 @@ const InboundRequests = () => {
         <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
             <ProviderSidebar />
             <ProviderMobileNavBar />
+            <Tutorial steps={tutorialSteps} tutorialKey="providerRequests" />
 
             <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
                 {/* Header */}
@@ -37,7 +51,7 @@ const InboundRequests = () => {
 
                 <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
                     {/* Search & Sort Toolbar */}
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex flex-col md:flex-row gap-4" id="tour-request-filters">
                         <div className="relative flex-1">
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                             <input 
@@ -57,7 +71,7 @@ const InboundRequests = () => {
                     </div>
 
                     {/* Requests List */}
-                    <div className="space-y-4">
+                    <div className="space-y-4" id="tour-request-list">
                         <AnimatePresence>
                             {requests.length === 0 ? (
                                 <div className="text-center py-12">

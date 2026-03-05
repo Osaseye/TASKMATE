@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { format } from 'date-fns';
 
@@ -10,26 +10,38 @@ const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [request, setRequest] = useState(null);
+    const [providerData, setProviderData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchRequest = async () => {
-            if (!id) return;
-            try {
-                const docRef = doc(db, "requests", id);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setRequest({ id: docSnap.id, ...docSnap.data() });
-                } else {
-                    console.log("No such request!");
+        if (!id) return;
+        
+        const unsubscribe = onSnapshot(doc(db, "requests", id), async (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setRequest({ id: docSnap.id, ...data });
+
+                // Fetch real provider data if assigned
+                if (data.providerId) {
+                    try {
+                        const providerSnap = await getDoc(doc(db, "users", data.providerId));
+                        if (providerSnap.exists()) {
+                            setProviderData(providerSnap.data());
+                        }
+                    } catch (err) {
+                        console.error("Error fetching provider details:", err);
+                    }
                 }
-            } catch (error) {
-                console.error("Error fetching request:", error);
-            } finally {
-                setLoading(false);
+            } else {
+                console.log("No such request!");
             }
-        };
-        fetchRequest();
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching request:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [id]);
 
     if (loading) {
@@ -57,6 +69,8 @@ const RequestStatus = () => {
             case 'Scheduled': return 1; // Provider Assigned
             case 'In Progress': return 2; // Work started
             case 'Completed': return 3;
+            case 'Declined': return -1; // Rejected
+            case 'Rejected': return -1; 
             default: return 0;
         }
     };
@@ -72,6 +86,34 @@ const RequestStatus = () => {
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24">
                     <div className="max-w-7xl mx-auto">
                         <div className="mb-8">
+                            {/* Alert for Rejected/Declined Requests */}
+                            {(request.status === 'Declined' || request.status === 'Rejected') && (
+                                <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                                    <div className="flex">
+                                        <div className="flex-shrink-0">
+                                            <span className="material-icons text-red-400">error</span>
+                                        </div>
+                                        <div className="ml-3">
+                                            <h3 className="text-sm font-medium text-red-800">Request Declined by Provider</h3>
+                                            <div className="mt-2 text-sm text-red-700">
+                                                <p>The provider could not accept your request. Reason:</p>
+                                                <p className="font-bold mt-1">"{request.rejectionReason || 'No reason provided'}"</p>
+                                                <p className="mt-2">You can edit the request to address the feedback (e.g., adjust budget) and resubmit it.</p>
+                                            </div>
+                                            <div className="mt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate('/customer/post-request', { state: { request: request } })}
+                                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                >
+                                                    Edit & Resubmit
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
@@ -82,18 +124,90 @@ const RequestStatus = () => {
                                     </p>
                                 </div>
                                 <div className="flex gap-3">
-                                    <button className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
-                                        Report Issue
-                                    </button>
-                                    <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
-                                        Cancel Request
-                                    </button>
+                                    {request.status === 'Completed' && !request.review ? (
+                                        <button 
+                                            onClick={() => navigate(`/customer/service-review/${id}`)}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            type="button"
+                                        >
+                                            <span className="material-icons-outlined text-sm mr-2">star</span>
+                                            Leave Review
+                                        </button>
+                                    ) : request.status === 'Declined' || request.status === 'Rejected' ? (
+                                        <button 
+                                            onClick={() => navigate('/customer/post-request', { state: { request: request } })}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" 
+                                            type="button"
+                                        >
+                                            Edit Request
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
+                                                Report Issue
+                                            </button>
+                                            {request.status !== 'Completed' && request.status !== 'Cancelled' && request.status !== 'Declined' && request.status !== 'Rejected' && (
+                                                <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
+                                                    Cancel Request
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-6">
+                                {/* Provider Profile Card */}
+                                {(request.providerId && providerData) && (request.status !== 'Declined' && request.status !== 'Rejected') && (
+                                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-center gap-6">
+                                        <div className="size-20 bg-gray-200 rounded-full flex-shrink-0 overflow-hidden">
+                                            {providerData.photoURL || request.providerPhoto ? (
+                                                <img src={providerData.photoURL || request.providerPhoto} alt={providerData.displayName || request.providerName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="material-icons text-4xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 text-center md:text-left">
+                                            <h3 className="text-lg font-bold text-gray-900">{providerData.displayName || request.providerName || 'Provider Assigned'}</h3>
+                                            <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 my-1">
+                                                <span className="material-icons text-sm">star</span>
+                                                <span className="text-sm font-bold text-gray-700">{providerData.rating ? Number(providerData.rating).toFixed(1) : 'New'}</span>
+                                                <span className="text-xs text-gray-500">
+                                                    (Verified Provider)
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-500">Your task has been assigned to this provider.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2 w-full md:w-auto">
+                                            {providerData.phoneNumber || request.providerPhone ? (
+                                                <a 
+                                                    href={`tel:${providerData.phoneNumber || request.providerPhone}`}
+                                                    className="inline-flex justify-center items-center px-4 py-2 border border-green-600 shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none w-full md:w-auto"
+                                                >
+                                                    <span className="material-icons text-sm mr-2">call</span>
+                                                    {providerData.phoneNumber || request.providerPhone}
+                                                </a>
+                                            ) : (
+                                                 <button 
+                                                    className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none w-full md:w-auto"
+                                                >
+                                                    <span className="material-icons text-sm mr-2">chat</span>
+                                                    Message
+                                                </button>
+                                            )}
+                                            
+                                            <button 
+                                                onClick={() => navigate(`/customer/provider/${request.providerId}`)}
+                                                className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none w-full md:w-auto"
+                                            >
+                                                View Profile
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="bg-white shadow rounded-lg p-6">
                                     <h2 className="text-lg font-medium text-gray-900 mb-6 font-display">Request Status Timeline</h2>
                                     <div className="relative pl-4">

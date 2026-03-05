@@ -124,7 +124,7 @@ const Landing = () => {
              <img
                 alt="Background"
                 className="w-full h-full object-cover blur-[2px] brightness-[40%] filter"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5bJRoSn3ydXSnQTh2quEGgEf1_PcqPwP0dWuocQQFw4GzxrA0rLmhZGmibOJFoKTYm07YbOGqIoORuYVxpmxoPHERiqXDTCNTL5tQDfm6mHKKzRhgqeaF2tKV1qqNgiwLVBSfr6HQqGRleYXHdilwVbmURUzK56H3PJkHq8VvBDQj1Tfecb1ueEEBIG_z31st_wo-Nomt6S8IMYLVLxkZBvDZ_7xkHWVIeCBcTcRUwFs4ELkBHtzzwvUPqsPKWmf1NhyG5-kNJ7Q"
+                src="/Taskmate.png"
             />
             <div className="absolute inset-0 bg-black/40 mix-blend-multiply"></div>
         </div>
@@ -212,7 +212,7 @@ const Landing = () => {
           <img
             alt="Professional worker fixing something"
             className="h-56 w-full object-cover sm:h-72 md:h-96 lg:w-full lg:h-full opacity-90"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5bJRoSn3ydXSnQTh2quEGgEf1_PcqPwP0dWuocQQFw4GzxrA0rLmhZGmibOJFoKTYm07YbOGqIoORuYVxpmxoPHERiqXDTCNTL5tQDfm6mHKKzRhgqeaF2tKV1qqNgiwLVBSfr6HQqGRleYXHdilwVbmURUzK56H3PJkHq8VvBDQj1Tfecb1ueEEBIG_z31st_wo-Nomt6S8IMYLVLxkZBvDZ_7xkHWVIeCBcTcRUwFs4ELkBHtzzwvUPqsPKWmf1NhyG5-kNJ7Q"
+            src="/Taskmate.png"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-surface-light to-transparent lg:via-surface-light/20"></div>
         </div>

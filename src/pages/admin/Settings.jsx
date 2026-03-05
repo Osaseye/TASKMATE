@@ -1,135 +1,186 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 const AdminSettings = () => {
-    // MOCK DATA for Admin Settings
-    const [platformSettings, setPlatformSettings] = useState({
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [settings, setSettings] = useState({
         commissionRate: 10,
         enableNewRegistrations: true,
         maintenanceMode: false,
         supportEmail: 'admin@taskmate.ng',
-        maxJobRadius: 25, // km
+        maxJobRadius: 25,
     });
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const docRef = doc(db, 'settings', 'platform');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    setSettings({ ...settings, ...snap.data() });
+                }
+            } catch (error) {
+                console.error("Error fetching settings:", error);
+                toast.error("Failed to load settings");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setPlatformSettings({
-            ...platformSettings,
+        setSettings({
+            ...settings,
             [name]: type === 'checkbox' ? checked : value,
         });
     };
 
-    const handleSave = () => {
-        // Logic to save settings to backend
-        console.log('Settings Saved:', platformSettings);
-        alert('Settings updated successfully!');
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await setDoc(doc(db, 'settings', 'platform'), settings, { merge: true });
+            toast.success("Settings saved successfully");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save settings");
+        } finally {
+            setSaving(false);
+        }
     };
 
+    if (loading) return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+    );
+
     return (
-        <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Platform Settings</h2>
-                <p className="text-gray-500">Configure global parameters for the TaskMate platform.</p>
+        <div className="max-w-4xl space-y-8 animate-fade-in relative z-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                 <div>
+                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Platform Settings</h2>
+                    <p className="text-gray-500">Configure global application parameters.</p>
+                </div>
+                 <button 
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                    {saving && <Loader2 className="animate-spin h-4 w-4" />}
+                    Save Changes
+                </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Financial Settings */}
-                <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">Financials</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="material-icons text-green-600">payments</span>
+                        Financial Configuration
+                    </h3>
+                    <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Commission Rate (%)</label>
-                            <input
-                                type="number"
-                                name="commissionRate"
-                                value={platformSettings.commissionRate}
-                                onChange={handleChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Percentage taken from each completed job.</p>
+                            <div className="relative rounded-md shadow-sm">
+                                <input
+                                    type="number"
+                                    name="commissionRate"
+                                    value={settings.commissionRate}
+                                    onChange={handleChange}
+                                    className="focus:ring-blue-500 focus:border-blue-500 block w-full pr-12 sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                                    placeholder="10"
+                                />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <span className="text-gray-500 sm:text-sm">%</span>
+                                </div>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">Percentage taken from each completed job.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Operations Settings */}
-                <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">Operations</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div>
+                {/* General Settings */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                     <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="material-icons text-blue-600">settings_applications</span>
+                        General Configuration
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Support Email</label>
                             <input
                                 type="email"
                                 name="supportEmail"
-                                value={platformSettings.supportEmail}
+                                value={settings.supportEmail}
                                 onChange={handleChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                             />
                         </div>
-                        <div>
+                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Max Job Radius (km)</label>
                             <input
                                 type="number"
                                 name="maxJobRadius"
-                                value={platformSettings.maxJobRadius}
+                                value={settings.maxJobRadius}
                                 onChange={handleChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Maximum distance for job matching.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* System Toggle Settings */}
-                <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">System Controls</h3>
+                {/* System Controls */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 md:col-span-2">
+                     <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="material-icons text-red-600">security</span>
+                        System Controls
+                    </h3>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                             <div>
-                                <h4 className="font-medium text-gray-900">New Registrations</h4>
-                                <p className="text-sm text-gray-500">Allow new providers and customers to sign up.</p>
+                                <h4 className="text-sm font-bold text-gray-900">Enable New Registrations</h4>
+                                <p className="text-xs text-gray-500">Allow new users to sign up for the platform.</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
+                                <input 
+                                    type="checkbox" 
                                     name="enableNewRegistrations"
-                                    checked={platformSettings.enableNewRegistrations}
+                                    checked={settings.enableNewRegistrations} 
                                     onChange={handleChange}
-                                    className="sr-only peer"
+                                    className="sr-only peer" 
                                 />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
                         </div>
-
-                         <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
+                        
+                        <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                             <div>
-                                <h4 className="font-medium text-red-900">Maintenance Mode</h4>
-                                <p className="text-sm text-red-500">Suspend all platform activity for updates.</p>
+                                <h4 className="text-sm font-bold text-gray-900">Maintenance Mode</h4>
+                                <p className="text-xs text-gray-500">Temporarily disable access for non-admin users.</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
+                                <input 
+                                    type="checkbox" 
                                     name="maintenanceMode"
-                                    checked={platformSettings.maintenanceMode}
+                                    checked={settings.maintenanceMode} 
                                     onChange={handleChange}
-                                    className="sr-only peer"
+                                    className="sr-only peer" 
                                 />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                             </label>
                         </div>
                     </div>
                 </div>
-
-                {/* Actions */}
-                <div className="pt-6 flex justify-end">
-                    <button
-                        onClick={handleSave}
-                        className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 transition-colors shadow-sm"
-                    >
-                        Save Changes
-                    </button>
-                </div>
             </div>
         </div>
     );
 };
+
 
 export default AdminSettings;

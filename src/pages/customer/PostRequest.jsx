@@ -9,7 +9,8 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../lib/firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore'; 
+import { db, storage } from '../../lib/firebase';
 
 // Fix for Leaflet marker icons in React
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -55,20 +56,44 @@ const LocationMarker = ({ position, setPosition, setAddress }) => {
 const PostRequest = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { providerId, providerName, category } = location.state || {}; // Added category
+    
+    // Check for an existing request passed for editing
+    const editingRequest = location.state?.request;
+    const providerId = location.state?.providerId || editingRequest?.providerId;
+    const providerName = location.state?.providerName || editingRequest?.providerName;
+    const initialCategory = location.state?.category || editingRequest?.category;
+
     const { createRequest } = useData();
     const [loading, setLoading] = useState(false);
     const { currentUser } = useAuth();
     
-    // Default to Lagos
-    const [mapCenter, setMapCenter] = useState([6.5244, 3.3792]);
-    const [markerPos, setMarkerPos] = useState(null);
-    const [address, setAddress] = useState('');
+    // State initialization
+    const [title, setTitle] = useState(editingRequest?.title || '');
+    const [description, setDescription] = useState(editingRequest?.description || '');
+    const [budget, setBudget] = useState(editingRequest?.budget || '');
+    const [category, setCategory] = useState(initialCategory || '');
+    const [urgency, setUrgency] = useState(editingRequest?.urgency || 'medium');
+    
+    // Address handling
+    const [mapCenter, setMapCenter] = useState(
+        editingRequest?.coordinates 
+            ? [editingRequest.coordinates.lat, editingRequest.coordinates.lng] 
+            : [6.5244, 3.3792]
+    );
+    const [markerPos, setMarkerPos] = useState(
+        editingRequest?.coordinates 
+            ? [editingRequest.coordinates.lat, editingRequest.coordinates.lng] 
+            : null
+    );
+    const [address, setAddress] = useState(editingRequest?.location || '');
+    
     const [selectedFile, setSelectedFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(editingRequest?.image || null);
 
     useEffect(() => {
-        // If user has a default address, prioritize it
+        // If editing, map is already set. If not editing, try user address/geo
+        if (editingRequest) return; 
+
         if (currentUser?.address) {
             setAddress(currentUser.address);
             
@@ -124,16 +149,15 @@ const PostRequest = () => {
         }
     };
 
-const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.target);
         
-        // Handle radio buttons specifically if needed, but FormData usually captures them well if checked.
-        // Get the urgency value which is radio
-        const urgency = formData.get('urgency'); // will be 'low', 'medium', or 'high'
+        // Handle explicit form data access for clarity, though updating state could work too.
+        // We'll trust FormData + State hybrids
         
-        let fileUrl = null;
+        let fileUrl = editingRequest?.image || null;
         if (selectedFile) {
             try {
                 const storageRef = ref(storage, `requests/${Date.now()}_${selectedFile.name}`);
@@ -149,28 +173,19 @@ const handleSubmit = async (e) => {
         
         const data = {
             title: formData.get('title'),
-            category: formData.get('category'),
+            category: category, 
             budget: formData.get('budget'),
             description: formData.get('description'),
-            location: address, // Use state address
+            location: address,
             coordinates: markerPos ? { lat: markerPos.lat || markerPos[0], lng: markerPos.lng || markerPos[1] } : null,
-            urgency: urgency, // Explicitly get urgency
-            image: fileUrl, // Add image URL
+            urgency: urgency, 
+            image: fileUrl,
             providerId: providerId || null,
-            status: providerId ? 'Pending' : 'Open',
+            status: providerId ? 'Pending' : 'Open', // Reset status if it was Rejected/Declined
             providerName: providerName || null,
-            timeline: [
-                {
-                    title: 'Request Posted',
-                    description: 'Your request has been submitted successfully.',
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    date: new Date().toDateString(),
-                    status: 'completed'
-                }
-            ]
-            // file-upload handling would go here (upload to storage first)
+            customerPhone: currentUser.phoneNumber || null, // Include customer phone
         };
-        
+
         if (!data.title || !data.description || !data.location || !data.budget) {
             toast.error('Please fill in all required fields');
             setLoading(false);
@@ -178,8 +193,59 @@ const handleSubmit = async (e) => {
         }
 
         try {
-            await createRequest(data);
-            toast.success('Request posted successfully!');
+            if (editingRequest) {
+                // Update specific request
+                const reqRef = doc(db, "requests", editingRequest.id);
+                // We should also clear any rejection data
+                const updatedData = {
+                    ...data,
+                    rejectedBy: null,
+                    rejectedByName: null,
+                    rejectionReason: null,
+                    updatedAt: new Date(),
+                    timeline: arrayUnion({
+                        title: 'Request Updated',
+                        description: 'Request was edited and resubmitted.',
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        date: new Date().toDateString(),
+                        status: 'info'
+                    })
+                };
+                
+                // If it was declined, we add a "Resubmitted" event
+                if (editingRequest.status === 'Declined' || editingRequest.status === 'Rejected') {
+                     updatedData.timeline = arrayUnion({
+                        title: 'Request Resubmitted',
+                        description: `Customer updated request for ${providerName || 'review'}.`,
+                        time: new Date().toLocaleTimeString(),
+                        status: 'info'
+                     });
+                     // Force status back to Pending if provider involved
+                     updatedData.status = providerId ? 'Pending' : 'Open';
+                }
+
+                await updateDoc(reqRef, updatedData);
+                toast.success('Request updated and resubmitted!');
+            } else {
+                // Create New
+                 // Manually add timeline here since createRequest doesn't usually allow timeline arg
+                 // Actually createRequest in context might override status
+                 // Let's modify data to include timeline if createRequest supports it.
+                 // Looking at createRequest in Context, it spreads everything.
+                 
+                 data.timeline = [
+                    {
+                        title: 'Request Posted',
+                        description: 'Your request has been submitted successfully.',
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        date: new Date().toDateString(),
+                        status: 'completed'
+                    }
+                ];
+                await createRequest(data);
+                toast.success('Request posted successfully!');
+            }
+            
             navigate('/dashboard');
         } catch (error) {
             console.error(error);
@@ -188,7 +254,10 @@ const handleSubmit = async (e) => {
             setLoading(false);
         }
     };
-
+    
+    // UI Render
+    // We replace inputs with state values where needed
+    
     return (
         <div className="font-body bg-gray-50 text-gray-900 min-h-screen">
             <div className="flex h-screen overflow-hidden">
@@ -227,7 +296,9 @@ const handleSubmit = async (e) => {
                                             <input 
                                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 placeholder-gray-400 focus:outline-none border" 
                                                 id="title" 
-                                                name="title" 
+                                                name="title"
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
                                                 placeholder="e.g., Fix leaking sink in kitchen" 
                                                 type="text" 
                                             />
@@ -239,12 +310,9 @@ const handleSubmit = async (e) => {
                                                     className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none ${category ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                     id="category"
                                                     name="category"
-                                                    defaultValue={category || 'Other'}
-                                                    // readOnly={!!category} // Actually, select doesn't support readOnly standardly, usually disabled is used but that prevents form submission.
-                                                    // Better: Use a controlled component or just let them change it but default it.
-                                                    // User said "it should already be...". Let's disable interaction via pointer-events if we really want to lock it,
-                                                    // or just trust the user. Given prompt "category should need to be selected it should already be...", I'll lock it.
-                                                    disabled={!!category}
+                                                    value={category}
+                                                    onChange={(e) => setCategory(e.target.value)}
+                                                    disabled={!!initialCategory} // Only disable if passed via state
                                                 >
                                                     {/* Ensure unique options */}
                                                     {[
@@ -272,9 +340,12 @@ const handleSubmit = async (e) => {
                                                     <input 
                                                         className="block w-full rounded-md border-gray-300 pl-8 focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none" 
                                                         id="budget" 
-                                                        name="budget" 
+                                                        name="budget"
+                                                        value={budget}
+                                                        onChange={(e) => setBudget(e.target.value)}
                                                         placeholder="0.00" 
-                                                        type="text" 
+                                                        type="number" // Changed to number for easier input
+                                                        step="0.01" 
                                                     />
                                                 </div>
                                             </div>
@@ -284,7 +355,9 @@ const handleSubmit = async (e) => {
                                             <textarea 
                                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 placeholder-gray-400 border focus:outline-none" 
                                                 id="description" 
-                                                name="description" 
+                                                name="description"
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
                                                 placeholder="Provide more details about the task..." 
                                                 rows="4"
                                             ></textarea>
@@ -410,7 +483,14 @@ const handleSubmit = async (e) => {
                                             <label className="block text-sm font-medium text-gray-700 mb-3">Urgency Level</label>
                                             <div className="grid grid-cols-3 gap-4">
                                                 <label className="cursor-pointer">
-                                                    <input className="peer sr-only" name="urgency" type="radio" value="low"/>
+                                                    <input 
+                                                        className="peer sr-only" 
+                                                        name="urgency" 
+                                                        type="radio" 
+                                                        value="low"
+                                                        checked={urgency === 'low'}
+                                                        onChange={() => setUrgency('low')}
+                                                    />
                                                     <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-green-500 peer-checked:ring-1 peer-checked:ring-green-500 peer-checked:bg-green-50 transition-all text-center">
                                                         <span className="material-icons-outlined text-gray-400 peer-checked:text-green-600 mb-1 block">hourglass_empty</span>
                                                         <span className="block text-sm font-medium text-gray-900">Low</span>
@@ -418,7 +498,14 @@ const handleSubmit = async (e) => {
                                                     </div>
                                                 </label>
                                                 <label className="cursor-pointer">
-                                                    <input defaultChecked className="peer sr-only" name="urgency" type="radio" value="medium"/>
+                                                    <input 
+                                                        className="peer sr-only" 
+                                                        name="urgency" 
+                                                        type="radio" 
+                                                        value="medium"
+                                                        checked={urgency === 'medium'}
+                                                        onChange={() => setUrgency('medium')}
+                                                    />
                                                     <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-green-500 peer-checked:ring-1 peer-checked:ring-green-500 peer-checked:bg-green-50 transition-all text-center">
                                                         <span className="material-icons-outlined text-gray-400 peer-checked:text-green-600 mb-1 block">schedule</span>
                                                         <span className="block text-sm font-medium text-gray-900">Medium</span>
@@ -426,7 +513,14 @@ const handleSubmit = async (e) => {
                                                     </div>
                                                 </label>
                                                 <label className="cursor-pointer">
-                                                    <input className="peer sr-only" name="urgency" type="radio" value="high"/>
+                                                    <input 
+                                                        className="peer sr-only" 
+                                                        name="urgency" 
+                                                        type="radio" 
+                                                        value="high"
+                                                        checked={urgency === 'high'}
+                                                        onChange={() => setUrgency('high')}
+                                                    />
                                                     <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-red-500 peer-checked:ring-1 peer-checked:ring-red-500 peer-checked:bg-red-50 transition-all text-center">
                                                         <span className="material-icons-outlined text-gray-400 peer-checked:text-red-500 mb-1 block">priority_high</span>
                                                         <span className="block text-sm font-medium text-gray-900 peer-checked:text-red-600">Emergency</span>

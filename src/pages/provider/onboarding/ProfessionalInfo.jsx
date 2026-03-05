@@ -118,6 +118,20 @@ const ProfessionalInfo = () => {
                 />
               </div>
 
+              {/* Phone Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-400 bg-gray-50/50"
+                  placeholder="e.g. 08012345678"
+                  required
+                />
+              </div>
+
               {/* Category */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Service Category</label>

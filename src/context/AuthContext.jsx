@@ -66,14 +66,19 @@ export function AuthProvider({ children }) {
     await updateProfile(user, { displayName: name });
 
     // Create User Document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
+    const userData = {
       uid: user.uid,
       email: email,
       displayName: name,
       role: role, // 'customer' or 'provider'
       createdAt: new Date().toISOString(),
       isVerified: role === 'customer' // Customers auto-verified, providers need review
-    });
+    };
+
+    await setDoc(doc(db, "users", user.uid), userData);
+    
+    // IMMEDIATE STATE UPDATE: Ensure currentUser has role before navigation occurs
+    setCurrentUser({ ...user, ...userData });
 
     return user;
   };

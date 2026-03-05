@@ -5,8 +5,9 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { storage } from '../../lib/firebase';
+import { storage, db } from '../../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
@@ -24,17 +25,47 @@ const Profile = () => {
     jobsCompleted: 0,
     memberSince: '',
     avatar: 'https://via.placeholder.com/150',
-    banner: null
+    banner: null,
+    reviews: []
   });
 
-  const [services, setServices] = useState([
-    { id: 1, name: 'Generator Repair', rate: '₦5,000', unit: 'per visit' },
-    { id: 2, name: 'House Wiring', rate: '₦15,000', unit: 'per room' },
-    { id: 3, name: 'AC Installation', rate: '₦10,000', unit: 'per unit' },
-  ]);
+  const [services, setServices] = useState([]);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [newService, setNewService] = useState({ name: '', rate: '', unit: 'per hour' });
 
+  // Listen for real-time updates to user profile (ratings, jobs, etc.)
   useEffect(() => {
-    if (currentUser) {
+    if (!currentUser?.uid) return;
+
+    const unsubscribe = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setProfile(prev => ({
+                ...prev,
+                name: data.displayName || prev.name,
+                email: data.email || prev.email,
+                phone: data.phoneNumber || prev.phone,
+                location: data.address || prev.location,
+                bio: data.description || data.bio || prev.bio,
+                rating: data.rating || 0,
+                jobsCompleted: data.jobsCompleted || 0,
+                memberSince: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : prev.memberSince,
+                avatar: data.photoURL || prev.avatar,
+                banner: data.banner || prev.banner,
+                reviews: data.reviews || []
+            }));
+            if (data.services) {
+                setServices(data.services);
+            }
+        }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Fallback initial load from AuthContext while listener connects
+  useEffect(() => {
+    if (currentUser && !profile.email) {
       setProfile({
         name: currentUser.displayName || '',
         email: currentUser.email || '',
@@ -45,13 +76,14 @@ const Profile = () => {
         jobsCompleted: currentUser.jobsCompleted || 0,
         memberSince: currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : '---',
         avatar: currentUser.photoURL || 'https://via.placeholder.com/150',
-        banner: currentUser.banner || null
+        banner: currentUser.banner || null,
+        reviews: currentUser.reviews || []
       });
       if (currentUser.services) {
         setServices(currentUser.services);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, profile.email]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -72,6 +104,32 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddService = () => {
+      if (!newService.name || !newService.rate) {
+          toast.error("Please fill in service name and rate");
+          return;
+      }
+      const service = { ...newService, id: Date.now() };
+      setServices([...services, service]);
+      setNewService({ name: '', rate: '', unit: 'per hour' }); // Reset
+      setShowServiceModal(false);
+      
+      // Auto-save services to Firestore
+      updateUserProfile({ services: [...services, service] })
+        .then(() => toast.success("Service added"))
+        .catch(() => toast.error("Failed to save service"));
+  };
+
+  const handleDeleteService = (id) => {
+      const updatedServices = services.filter(s => s.id !== id);
+      setServices(updatedServices);
+      
+      // Auto-save deletion
+      updateUserProfile({ services: updatedServices })
+        .then(() => toast.success("Service removed"))
+        .catch(() => toast.error("Failed to remove service"));
   };
 
   const handleChange = (e) => {
@@ -357,24 +415,94 @@ const Profile = () => {
               >
                  <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="font-bold text-gray-900">Services Offered</h3>
-                    <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
+                    <button 
+                        onClick={() => setShowServiceModal(true)}
+                        className="text-sm font-bold text-primary flex items-center gap-1 hover:underline"
+                    >
                         <span className="material-symbols-outlined text-lg">add</span>
                         Add Service
                     </button>
                  </div>
-                 <div className="divide-y divide-gray-100">
-                    {services.map((service) => (
-                        <div key={service.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                 
+                 {showServiceModal && (
+                    <div className="p-6 bg-gray-50 border-b border-gray-100 space-y-4 animate-fade-in">
+                        <h4 className="font-bold text-gray-800 text-sm">New Service Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input 
+                                placeholder="Service Name (e.g. Consulting)" 
+                                value={newService.name}
+                                onChange={(e) => setNewService({...newService, name: e.target.value})}
+                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-primary outline-none"
+                            />
+                            <div className="flex bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:border-primary">
+                                <span className="bg-gray-100 px-3 py-2 text-gray-500 text-sm border-r border-gray-300">₦</span>
+                                <input 
+                                    placeholder="Rate" 
+                                    type="number"
+                                    value={newService.rate}
+                                    onChange={(e) => setNewService({...newService, rate: e.target.value})}
+                                    className="w-full p-2 text-sm outline-none"
+                                />
+                            </div>
+                            <select 
+                                value={newService.unit}
+                                onChange={(e) => setNewService({...newService, unit: e.target.value})}
+                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-primary outline-none bg-white"
+                            >
+                                <option value="per hour">per hour</option>
+                                <option value="per visit">per visit</option>
+                                <option value="per project">per project</option>
+                                <option value="per item">per item</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                            <button 
+                                onClick={() => setShowServiceModal(false)}
+                                className="px-4 py-2 text-gray-500 text-sm hover:bg-gray-200 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleAddService}
+                                className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark"
+                            >
+                                Add Service
+                            </button>
+                        </div>
+                    </div>
+                 )}
+
+                 <div className="divide-y divide-gray-100 service-list">
+                    {services.length > 0 ? (
+                        services.map((service) => (
+                        <div key={service.id || Math.random()} className="p-4 md:p-6 flex items-center justify-between hover:bg-gray-50 transition-colors group">
                             <div>
                                 <p className="font-bold text-gray-900">{service.name}</p>
-                                <p className="text-sm text-gray-500">Standard service</p>
+                                <p className="text-sm text-gray-500 capitalize">{service.unit}</p>
                             </div>
-                            <div className="text-right">
-                                <p className="font-bold text-gray-900">{service.rate}</p>
-                                <p className="text-xs text-gray-500">{service.unit}</p>
+                            <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                    <p className="font-bold text-gray-900">
+                                        {/* Handle both number and formatted string for robustness */}
+                                        {isNaN(service.rate) ? service.rate : `₦${Number(service.rate).toLocaleString()}`}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => handleDeleteService(service.id)}
+                                    className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-full hover:bg-red-50"
+                                    title="Remove Service"
+                                >
+                                    <span className="material-symbols-outlined">delete</span>
+                                </button>
                             </div>
                         </div>
-                    ))}
+                    ))
+                    ) : (
+                        <div className="p-8 text-center text-gray-400">
+                            <span className="material-symbols-outlined text-4xl mb-2 opacity-30">design_services</span>
+                            <p>No services listed. Add services to attract customers!</p>
+                        </div>
+                    )}
                  </div>
               </motion.div>
             )}
@@ -383,10 +511,45 @@ const Profile = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 10 }} 
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500"
+                    className="space-y-4"
                 >
-                    <span className="material-symbols-outlined text-4xl mb-2 opacity-50">reviews</span>
-                    <p>Reviews will appear here once you complete jobs.</p>
+                    {profile.reviews && profile.reviews.length > 0 ? (
+                        profile.reviews.map((review, idx) => (
+                            <div key={idx} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200">
+                                            {review.user ? review.user.charAt(0).toUpperCase() : 'C'}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-900">{review.user || 'Customer'}</p>
+                                            <p className="text-xs text-gray-500">{review.date ? review.date : new Date(review.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex text-yellow-500">
+                                        {[...Array(5)].map((_, i) => (
+                                            <span key={i} className={`material-symbols-outlined text-sm ${i < (review.rating || 0) ? 'fill-current' : 'text-gray-300'}`}>star</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="text-gray-600 mb-3">{review.comment || review.text}</p>
+                                {review.tags && review.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {review.tags.map((tag, i) => (
+                                            <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-100">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500">
+                            <span className="material-symbols-outlined text-4xl mb-2 opacity-50">reviews</span>
+                            <p>No reviews recieved yet. Complete jobs to earn ratings!</p>
+                        </div>
+                    )}
                 </motion.div>
             )}
           </div>

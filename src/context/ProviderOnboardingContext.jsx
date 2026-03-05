@@ -13,6 +13,7 @@ export function ProviderOnboardingProvider({ children }) {
       // Step 1: Professional Info
       businessName: '',
       category: '',
+      phoneNumber: '',
       description: '',
       address: '',
       website: '',

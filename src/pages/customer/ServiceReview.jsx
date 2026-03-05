@@ -1,9 +1,144 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { format } from 'date-fns';
 
 const ServiceReview = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
+    const [request, setRequest] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [rating, setRating] = useState(0);
+    const [feedback, setFeedback] = useState('');
+    const [tags, setTags] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fetchRequest = async () => {
+            if (!id) return;
+            try {
+                const docRef = doc(db, "requests", id);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setRequest({ id: docSnap.id, ...data });
+                    // Provide initial rating/feedback if already reviewed (optional)
+                    if (data.review) {
+                        setRating(data.review.rating);
+                        setFeedback(data.review.comment);
+                        setTags(data.review.tags || []);
+                    }
+                } else {
+                    toast.error("Request not found");
+                    navigate('/dashboard');
+                }
+            } catch (error) {
+                console.error("Error fetching request:", error);
+                toast.error("Failed to load request details");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRequest();
+    }, [id, navigate]);
+
+    const handleTagToggle = (tag) => {
+        if (tags.includes(tag)) {
+            setTags(tags.filter(t => t !== tag));
+        } else {
+            setTags([...tags, tag]);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (rating === 0) {
+            toast.error("Please select a rating");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const requestRef = doc(db, "requests", id);
+            
+            // Build review object
+            const reviewData = {
+                rating,
+                comment: feedback,
+                tags,
+                createdAt: new Date().toISOString()
+            };
+
+            await updateDoc(requestRef, {
+                review: reviewData,
+                status: 'Completed', 
+                timeline: arrayUnion({
+                    title: 'Review Submitted',
+                    description: `Customer rated ${rating}/5 stars.`,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    date: new Date().toDateString(),
+                    status: 'completed'
+                })
+            });
+
+            // Update Provider Profile with Review
+            if (request.providerId) {
+                const providerRef = doc(db, "users", request.providerId);
+                const providerSnap = await getDoc(providerRef);
+                
+                if (providerSnap.exists()) {
+                    const providerData = providerSnap.data();
+                    const currentRating = providerData.rating || 0;
+                    const currentCount = providerData.reviews?.length || 0;
+                    const newRating = ((currentRating * currentCount) + rating) / (currentCount + 1);
+
+                    const providerReview = {
+                        rating,
+                        comment: feedback,
+                        tags,
+                        createdAt: new Date().toISOString(),
+                        user: currentUser?.displayName || 'Customer',
+                        userId: currentUser?.uid,
+                        requestId: id,
+                        date: new Date().toLocaleDateString()
+                    };
+
+                    await updateDoc(providerRef, {
+                        reviews: arrayUnion(providerReview),
+                        rating: Number(newRating.toFixed(1)),
+                        jobsCompleted: increment(1)
+                    });
+                }
+            }
+
+            toast.success("Thank you for your review!");
+            navigate('/dashboard');
+        } catch (error) {
+            console.error("Error submitting review:", error);
+            toast.error("Failed to submit review");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+        );
+    }
+
+    if (!request) return null;
+
+    const dateStr = request.createdAt?.toDate ? format(request.createdAt.toDate(), 'MMM dd, yyyy') : 'Recently';
+
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
             <Sidebar />
@@ -17,7 +152,7 @@ const ServiceReview = () => {
                             </div>
                             <h1 className="text-3xl font-bold text-gray-900">Service Completed!</h1>
                             <p className="text-lg text-gray-500 max-w-lg mx-auto">
-                                Your plumbing repair service has been marked as complete. Please review the summary and rate your experience.
+                                The service for <span className="font-semibold text-gray-800">{request.title}</span> has been marked as complete. Please review the summary and rate your experience.
                             </p>
                         </div>
 
@@ -27,49 +162,51 @@ const ServiceReview = () => {
                                     <div className="p-6">
                                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Job Summary</h3>
                                         <div className="flex items-start space-x-4 mb-6">
-                                            <img alt="Provider" className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAJ1iNTEkALEAtX8-GML3QtWOrsP9Zq9oakd62z8pcI2_TSIMBy1ialnReulFWYMee6-1PrfVUUIPidxZB0efKdJELhiHt5Wk5EYSq40_3svfAfesXt514p1MV-4GLCB_doQBAYPYSYJIgwws3emy5jMLlWVFBytbpAJXTHY_KHQQqBVN-qV77WL0-WNBqrLlaNBd8hFB4cFCw1z5kRMK0zDbkkK50cTES5YUoKGHAMiVyxAaVpTtH3xdujxEGZ5gr9I1-VCCcVxU"/>
+                                            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200 text-lg">
+                                                {request.providerName ? request.providerName.charAt(0) : 'P'}
+                                            </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-900">Emmanuel Okafor</p>
+                                                <p className="text-sm font-semibold text-gray-900">{request.providerName || 'Provider'}</p>
                                                 <p className="text-xs text-gray-500 flex items-center">
-                                                    <span className="material-icons-outlined text-yellow-500 text-sm mr-1">star</span> 4.8 (124 jobs)
+                                                    <span className="material-icons-outlined text-green-500 text-sm mr-1">verified</span> Verified Pro
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="space-y-3">
                                             <div>
                                                 <p className="text-xs text-gray-500">Service Type</p>
-                                                <p className="font-medium text-gray-900">Plumbing Repair</p>
+                                                <p className="font-medium text-gray-900">{request.category}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-gray-500">Date</p>
-                                                <p className="font-medium text-gray-900">Oct 24, 2023</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-gray-500">Duration</p>
-                                                <p className="font-medium text-gray-900">2 hrs 30 mins</p>
-                                            </div>
+                                                <p className="text-xs text-gray-500">Date Posted</p>
+                                                <p className="font-medium text-gray-900">{dateStr}</p>
+                                            </div> 
                                             <div className="pt-3 border-t border-gray-100">
                                                 <p className="text-xs text-gray-500">Total Amount</p>
-                                                <p className="text-2xl font-bold text-green-600">₦15,000</p>
+                                                <p className="text-2xl font-bold text-green-600">₦{request.budget}</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-                                        <span className="text-xs font-medium text-gray-500">Invoice #INV-2023-001</span>
-                                        <a className="text-xs font-medium text-green-600 hover:text-green-700" href="#">View Invoice</a>
+                                        <span className="text-xs font-medium text-gray-500">ID: #{request.id.slice(0, 8).toUpperCase()}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="md:col-span-2">
                                 <div className="bg-white shadow rounded-2xl p-6 sm:p-8 border border-gray-100 h-full">
                                     <h2 className="text-xl font-bold text-gray-900 mb-6">Rate & Review</h2>
-                                    <form className="space-y-6">
+                                    <form onSubmit={handleSubmit} className="space-y-6">
                                         <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl mb-6 border border-gray-100">
                                             <label className="block text-sm font-medium text-gray-700 mb-3">How would you rate the service?</label>
                                             <div className="flex flex-row gap-2">
                                                 {[1, 2, 3, 4, 5].map((star) => (
-                                                    <button key={star} type="button" className="focus:outline-none">
-                                                        <span className={`material-icons-outlined text-4xl ${star <= 4 ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`}>star</span>
+                                                    <button 
+                                                        key={star} 
+                                                        type="button" 
+                                                        onClick={() => setRating(star)}
+                                                        className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                                                    >
+                                                        <span className={`material-icons-outlined text-4xl ${star <= rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`}>star</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -78,9 +215,14 @@ const ServiceReview = () => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">What went well?</label>
                                             <div className="flex flex-wrap gap-2">
-                                                {['Punctuality', 'Professionalism', 'Quality of Work', 'Communication'].map((tag) => (
+                                                {['Punctuality', 'Professionalism', 'Quality of Work', 'Communication', 'Value'].map((tag) => (
                                                     <label key={tag} className="cursor-pointer">
-                                                        <input className="peer sr-only" type="checkbox"/>
+                                                        <input 
+                                                            className="peer sr-only" 
+                                                            type="checkbox"
+                                                            checked={tags.includes(tag)}
+                                                            onChange={() => handleTagToggle(tag)}
+                                                        />
                                                         <span className="px-3 py-1.5 rounded-full text-sm border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:border-green-200 transition-all select-none">
                                                             {tag}
                                                         </span>
@@ -92,27 +234,27 @@ const ServiceReview = () => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="feedback">Share your experience</label>
                                             <div className="mt-1">
-                                                <textarea className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border outline-none" id="feedback" name="feedback" placeholder="Tell us more about the service provided..." rows="4"></textarea>
+                                                <textarea 
+                                                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border outline-none" 
+                                                    id="feedback" 
+                                                    name="feedback" 
+                                                    value={feedback}
+                                                    onChange={(e) => setFeedback(e.target.value)}
+                                                    placeholder="Tell us more about the service provided..." 
+                                                    rows="4"
+                                                ></textarea>
                                             </div>
                                             <p className="mt-2 text-xs text-gray-500">Your review helps others in the TaskMate community.</p>
                                         </div>
                                         
-                                        <div className="border-t border-gray-100 pt-6">
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">Add a tip (Optional)</label>
-                                            <div className="flex gap-3">
-                                                <button className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">₦500</button>
-                                                <button className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">₦1,000</button>
-                                                <button className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">₦2,000</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="pt-4">
-                                            <button className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors" type="submit">
-                                                Submit Review
+                                        <div className="border-t border-gray-100 pt-6 flex justify-end">
+                                            <button 
+                                                disabled={submitting}
+                                                type="submit" 
+                                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            >
+                                                {submitting ? 'Submitting...' : 'Submit Review'}
                                             </button>
-                                            <div className="mt-4 text-center">
-                                                <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-900 underline">Skip feedback</Link>
-                                            </div>
                                         </div>
                                     </form>
                                 </div>

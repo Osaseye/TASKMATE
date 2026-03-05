@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { doc, onSnapshot, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, Timestamp, increment, getDoc, collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { useAuth } from '../../context/AuthContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import StatusUpdateModal from '../../components/provider/StatusUpdateModal';
@@ -26,19 +27,60 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const JobDetails = () => {
     const { id } = useParams();
+    const { currentUser } = useAuth();
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [uploadedInvoice, setUploadedInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
     
     const [job, setJob] = useState(null);
+    const [customerProfile, setCustomerProfile] = useState(null);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
         
-        const unsubscribe = onSnapshot(doc(db, "requests", id), (docSnapshot) => {
+        const unsubscribe = onSnapshot(doc(db, "requests", id), async (docSnapshot) => {
             if (docSnapshot.exists()) {
                 const data = docSnapshot.data();
+                
+                let customerData = {
+                    name: data.customerName || 'Customer',
+                    image: data.customerPhoto || '',
+                    phone: data.customerPhone || null,
+                    jobs: 0 // Default
+                };
+
+                // Fetch real customer data if ID exists
+                if (data.customerId) {
+                    try {
+                        const userDoc = await getDoc(doc(db, "users", data.customerId));
+                        if (userDoc.exists()) {
+                            const uData = userDoc.data();
+                            customerData.name = uData.displayName || customerData.name;
+                            customerData.image = uData.photoURL || customerData.image;
+                            customerData.phone = uData.phoneNumber || customerData.phone;
+                            
+                            // Get Completed Jobs Count
+                            const jobsQuery = query(
+                                collection(db, "requests"), 
+                                where("customerId", "==", data.customerId),
+                                where("status", "==", "Completed")
+                            );
+                            const snapshot = await getCountFromServer(jobsQuery);
+                            customerData.jobs = snapshot.data().count;
+
+                            setCustomerProfile({
+                                ...uData,
+                                id: userDoc.id,
+                                completedJobs: snapshot.data().count
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error fetching customer details:", err);
+                    }
+                }
+
                 setJob({
                     id: docSnapshot.id,
                     ...data,
@@ -47,12 +89,7 @@ const JobDetails = () => {
                          { title: 'Request Received', time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : '---', status: 'completed' },
                          { title: 'Provider Assigned', time: '---', status: 'current' }
                     ],
-                    customer: {
-                        name: data.customerName || 'Customer',
-                        rating: 4.8, // Mock
-                        jobs: 12, // Mock
-                        image: data.customerPhoto || '' 
-                    },
+                    customer: customerData,
                     location: {
                         address: data.location || '---',
                         mapImage: '' 
@@ -135,6 +172,23 @@ const JobDetails = () => {
         }
     };
 
+    const applyCommissionCharge = async (amount) => {
+        if (!currentUser) return;
+        const commission = amount * 0.1; // 10%
+        try {
+            const userRef = doc(db, "users", currentUser.uid);
+            await updateDoc(userRef, {
+                commissionBalance: increment(commission),
+                earnings: increment(amount - commission), 
+                completedJobs: increment(1)
+            });
+            console.log(`Commission of ${commission} applied.`);
+        } catch (error) {
+            console.error("Error applying commission:", error);
+            toast.error("Failed to update commission balance");
+        }
+    };
+
     const handleInvoiceUpload = async (file, amount) => {
         setIsInvoiceModalOpen(false);
         const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -143,7 +197,10 @@ const JobDetails = () => {
               // 1. Upload Invoice File (TODO: Actual Storage Upload)
               // const invoiceUrl = await uploadFile(file);
               
-              // 2. Update Job
+              // 2. Add Commission Logic
+              await applyCommissionCharge(Number(amount));
+
+              // 3. Update Job
               const jobRef = doc(db, "requests", id);
               
               await updateDoc(jobRef, {
@@ -329,25 +386,49 @@ const JobDetails = () => {
                             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="size-14 rounded-full bg-gray-100 overflow-hidden ring-2 ring-primary/20">
-                                        <img className="w-full h-full object-cover" src={job.customer.image} alt={job.customer.name} />
+                                        {job.customer.image ? (
+                                            <img className="w-full h-full object-cover" src={job.customer.image} alt={job.customer.name} />
+                                        ) : (
+                                            <span className="material-symbols-outlined text-3xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col">
                                         <h3 className="text-lg font-bold text-gray-900 flex items-center gap-1">
                                             {job.customer.name}
                                             <span className="material-symbols-outlined text-blue-500 text-[16px]" title="Verified Customer">verified</span>
                                         </h3>
-                                        <div className="flex items-center gap-1 text-sm">
-                                            <span className="material-symbols-outlined text-yellow-400 text-[18px] fill-current">star</span>
-                                            <span className="font-semibold text-gray-900">{job.customer.rating}</span>
-                                            <span className="text-gray-500">({job.customer.jobs} jobs)</span>
-                                        </div>
+                                        <p className={`text-sm font-medium ${job.customer.jobs > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                                            {job.customer.jobs} Tasks Completed
+                                        </p>
                                     </div>
                                 </div>
-                                <button className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium text-sm">
-                                    <span className="material-symbols-outlined text-[18px]">chat</span>
-                                    Message Customer
-                                </button>
+                                
+                                <div className="space-y-2">
+                                    {job.customer.phone ? (
+                                        <a 
+                                            href={`tel:${job.customer.phone}`}
+                                            className="w-full py-2.5 rounded-xl bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors flex items-center justify-center gap-2 font-bold text-sm"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">call</span>
+                                            {job.customer.phone}
+                                        </a>
+                                    ) : (
+                                        <button disabled className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-2 font-medium text-sm">
+                                            <span className="material-symbols-outlined text-[18px]">no_cell</span>
+                                            No Phone Number
+                                        </button>
+                                    )}
+
+                                    <button 
+                                        onClick={() => setIsProfileModalOpen(true)}
+                                        className="w-full py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium text-sm"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                                        View Profile
+                                    </button>
+                                </div>
                             </div>
+
 
                             {/* Timeline */}
                             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -422,6 +503,60 @@ const JobDetails = () => {
                     </div>
                 </div>
             </main>
+
+            {isProfileModalOpen && customerProfile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
+                        <button 
+                            onClick={() => setIsProfileModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                        
+                        <div className="flex flex-col items-center text-center">
+                            <div className="size-24 rounded-full bg-gray-100 overflow-hidden ring-4 ring-primary/20 mb-4">
+                                {customerProfile.photoURL || customerProfile.image ? (
+                                    <img className="w-full h-full object-cover" src={customerProfile.photoURL || customerProfile.image} alt={customerProfile.displayName || customerProfile.name} />
+                                ) : (
+                                    <span className="material-symbols-outlined text-5xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
+                                )}
+                            </div>
+                            
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                {customerProfile.displayName || customerProfile.name || 'Customer'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6">TaskMate Customer</p>
+                            
+                            <div className="w-full grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-gray-50 p-3 rounded-xl">
+                                    <p className="text-xl font-bold text-gray-900">{customerProfile.completedJobs || 0}</p>
+                                    <p className="text-xs text-gray-500 font-medium">Tasks Done</p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-xl">
+                                    <p className="text-xl font-bold text-gray-900">Active</p>
+                                    <p className="text-xs text-gray-500 font-medium">Status</p>
+                                </div>
+                            </div>
+
+                            <div className="w-full space-y-3">
+                                {(customerProfile.phoneNumber || customerProfile.phone) && (
+                                     <a href={`tel:${customerProfile.phoneNumber || customerProfile.phone}`} className="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                                        <span className="material-symbols-outlined">call</span>
+                                        Call {customerProfile.phoneNumber || customerProfile.phone}
+                                     </a>
+                                )}
+                                <button 
+                                    onClick={() => setIsProfileModalOpen(false)}
+                                    className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

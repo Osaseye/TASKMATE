@@ -30,9 +30,22 @@ const Dashboard = () => {
         : requests.filter(req => req.status === activeTab);
     
     // Derived stats
-    const activeTasksCount = requests.filter(r => r.status === 'In Progress').length;
+    const activeTasksCount = requests.filter(r => ['In Progress', 'Scheduled', 'Open', 'Pending'].includes(r.status)).length; 
     const completedTasksCount = requests.filter(r => r.status === 'Completed').length;
-    const pendingTasksCount = requests.filter(r => r.status === 'Pending').length;
+    
+    // Calculate Total Spent (Sum of completed requests budget)
+    const totalSpent = requests
+        .filter(r => r.status === 'Completed')
+        .reduce((sum, r) => sum + (Number(r.budget) || 0), 0);
+
+    // Get Recent Activity (Sorted by createdAt or updatedAt)
+    const recentActivity = [...requests]
+        .sort((a, b) => {
+            const dateA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+            const dateB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+            return dateB - dateA;
+        })
+        .slice(0, 5);
 
     const toggleDropdown = (e, id) => {
         e.stopPropagation();
@@ -119,7 +132,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-500">Total Spent</p>
-                                            <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
+                                            <h3 className="text-2xl font-bold text-gray-900">₦{totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -259,10 +272,40 @@ const Dashboard = () => {
                                         <button className="text-xs font-semibold text-green-700 hover:underline">View All</button>
                                     </div>
                                     <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-5 before:w-0.5 before:bg-gray-100">
-                                        {/* Empty State for Activity */}
-                                        <div className="text-center py-6 text-gray-500 text-sm">
-                                            No recent activity
-                                        </div>
+                                        {recentActivity.length > 0 ? (
+                                            recentActivity.map((activity) => {
+                                                const hasTimeline = activity.timeline && activity.timeline.length > 0;
+                                                const lastEvent = hasTimeline ? activity.timeline[activity.timeline.length - 1] : null;
+                                                // Fallback to basic created/updated info if no timeline
+                                                const eventTitle = lastEvent?.title || `Request ${activity.status}`;
+                                                const eventDesc = lastEvent?.description || `Status updated to ${activity.status}`;
+                                                const eventTime = activity.updatedAt?.toDate 
+                                                    ? format(activity.updatedAt.toDate(), 'MMM dd, h:mm a') 
+                                                    : (activity.createdAt?.toDate ? format(activity.createdAt.toDate(), 'MMM dd') : 'Recently');
+
+                                                return (
+                                                    <div key={activity.id} className="relative pl-8 py-1 group cursor-pointer" onClick={() => navigate(`/customer/request-status/${activity.id}`)}>
+                                                        <div className={`absolute left-[13px] top-1.5 h-3 w-3 rounded-full ring-4 ring-white ${
+                                                            activity.status === 'Completed' ? 'bg-green-500' : 
+                                                            activity.status === 'Cancelled' || activity.status === 'Declined' ? 'bg-red-500' : 
+                                                            'bg-blue-500'
+                                                        }`}></div>
+                                                        
+                                                        <p className="text-sm font-bold text-gray-900 leading-none mb-1 group-hover:text-green-600 transition-colors">
+                                                            {eventTitle}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 truncate">{activity.title} - {eventDesc}</p>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">
+                                                            {eventTime}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="text-center py-6 text-gray-500 text-sm">
+                                                No recent activity
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

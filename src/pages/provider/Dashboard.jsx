@@ -9,35 +9,55 @@ import { useData } from '../../context/DataContext';
 
 const ProviderDashboard = () => {
     const { currentUser } = useAuth();
-    const { jobs, earnings = [] } = useData();
+    const { jobs } = useData();
     
     // Derived state
     const isVerified = currentUser?.isVerified || true; 
     
+    // Get current month name
+    const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+    const currentMonthFull = new Date().toLocaleString('default', { month: 'long' });
+
+    // Calculate Earnings (Completed Jobs where providerId matches current user)
+    // Assuming 'jobs' contains all requests, we filter by providerId and status 'Completed'
+    const completedJobs = jobs.filter(j => 
+        j.providerId === currentUser?.uid && 
+        (j.status === 'Completed' || j.status === 'Paid')
+    );
+
+    const totalEarnings = completedJobs.reduce((acc, job) => acc + (Number(job.finalAmount) || Number(job.budget) || 0), 0);
+
     // Filter logic: Show jobs that are 'Open' (available to everyone) OR 'Pending' (directed to me)
-    // The DataContext should already filter 'jobs' to include my assigned ones.
     const nearbyRequests = jobs.filter(j => 
         j.status === 'Open' || 
         (j.status === 'Pending' && j.providerId === currentUser?.uid)
     );
     
-    const schedule = jobs.filter(j => j.status === 'Scheduled' || j.status === 'In Progress');
+    const schedule = jobs.filter(j => (j.status === 'Scheduled' || j.status === 'In Progress') && j.providerId === currentUser?.uid);
     
-    // Mock activities from jobs for display
-    const activities = jobs.slice(0, 5).map(job => ({
-        id: job.id,
-        type: job.status === 'Completed' ? 'payment' : 'job_update',
-        title: job.status === 'Completed' ? 'Payment Received' : 'New Request',
-        message: job.status === 'Completed' ? `You earned ₦${job.budget}` : `New request: ${job.title}`,
-        time: 'Recently'
-    }));
-
     const stats = {
-        earnings: earnings.reduce((acc, curr) => acc + curr.amount, 0),
-        jobs: jobs.filter(j => j.status === 'completed').length,
-        completionRate: 0,
+        earnings: totalEarnings,
+        jobs: completedJobs.length,
+        completionRate: 0, // Could be calculated if we tracked accepted vs completed
         responseTime: '-'
     };
+
+    // Create activities feed from jobs
+    const activities = jobs
+        .filter(j => j.providerId === currentUser?.uid)
+        .sort((a, b) => {
+             const dateA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+             const dateB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+             return dateB - dateA;
+        })
+        .slice(0, 5)
+        .map(job => ({
+            id: job.id,
+            type: job.status === 'Completed' ? 'payment' : 'job_update',
+            title: job.status === 'Completed' ? 'Payment Received' : 'Job Update',
+            message: job.status === 'Completed' ? `You earned ₦${job.budget}` : `Status: ${job.status} for ${job.title}`,
+            time: job.updatedAt?.toDate ? job.updatedAt.toDate().toLocaleDateString() : 'Recently'
+        }));
     
     const handleDecline = (title) => {
         toast.success(`Declined request: ${title}`, {
@@ -133,7 +153,7 @@ const ProviderDashboard = () => {
                   </div>
                   <div className="flex justify-between items-start z-10">
                      <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Total Earnings (Oct)</p>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Total Earnings</p>
                         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">₦{stats.earnings.toLocaleString()}</h2>
                      </div>
                      <div className="p-2 bg-green-50 rounded-lg text-green-600">

@@ -63,14 +63,15 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-        await register(formData.email, formData.password, formData.fullName, formData.userType);
+        const user = await register(formData.email, formData.password, formData.fullName, formData.userType);
         toast.success(`Welcome, ${formData.fullName}!`);
         
-        // Determine flow based on user type
+        // Ensure state update is awaited (it is in register())
+        // Navigate based on role immediately
         if (formData.userType === 'customer') {
-          navigate('/customer/onboarding'); // Redirect to customer onboarding
+          navigate('/customer/onboarding', { replace: true });
         } else {
-          navigate('/provider/onboarding/step-1'); 
+          navigate('/provider/onboarding/step-1', { replace: true });
         }
     } catch (error) {
         console.error("Registration failed", error);

@@ -55,13 +55,16 @@ import AdminRequestDetails from './pages/admin/RequestDetails';
 import AdminVerificationDetails from './pages/admin/VerificationDetails';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import AIChat from './components/customer/AIChat';
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const isCustomerPlatform = location.pathname === '/dashboard' || location.pathname.startsWith('/customer');
   
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -75,7 +78,8 @@ function AnimatedRoutes() {
         <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
         <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
-        <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
+        <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/dashboard" replace /></ProtectedRoute>} />
+        <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
         <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
 
@@ -104,7 +108,14 @@ function AnimatedRoutes() {
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:id" element={<AdminUserDetails />} />
@@ -117,7 +128,9 @@ function AnimatedRoutes() {
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>
-    </AnimatePresence>
+      </AnimatePresence>
+      {isCustomerPlatform && <AIChat />}
+    </>
   );
 }
 

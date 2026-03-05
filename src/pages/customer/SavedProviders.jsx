@@ -1,11 +1,55 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useData } from '../../context/DataContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 const SavedProviders = () => {
-    // MOCK DATA - EMPTY STATE
-    const savedProviders = [];
+    const { savedProviderIds, toggleSavedProvider } = useData();
+    const [savedProviders, setSavedProviders] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSavedProviders = async () => {
+            if (savedProviderIds.length === 0) {
+                setSavedProviders([]);
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const providerPromises = savedProviderIds.map(id => getDoc(doc(db, "users", id)));
+                const providerSnapshots = await Promise.all(providerPromises);
+                
+                const providers = providerSnapshots
+                    .filter(snap => snap.exists())
+                    .map(snap => {
+                        const data = snap.data();
+                        return {
+                            id: snap.id,
+                            name: data.displayName || 'Provider',
+                            service: data.category || 'Service Provider',
+                            image: data.photoURL || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
+                            rating: data.rating || 'New',
+                            rate: data.services?.[0]?.rate || 'Negotiable',
+                            location: data.address || 'Remote',
+                            verified: data.isVerified
+                        };
+                    });
+                
+                setSavedProviders(providers);
+            } catch (error) {
+                console.error("Error fetching saved providers:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSavedProviders();
+    }, [savedProviderIds]);
 
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
@@ -27,8 +71,13 @@ const SavedProviders = () => {
                             </Link>
                         </div>
 
-                        {/* Grid */}
-                        {savedProviders.length > 0 ? (
+                        {loading ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {[1,2,3,4].map(i => (
+                                    <div key={i} className="h-64 bg-gray-200 animate-pulse rounded-3xl"></div>
+                                ))}
+                             </div>
+                        ) : savedProviders.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {savedProviders.map((provider) => (
                                     <div key={provider.id} className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 border border-gray-100 transition-all duration-300 relative flex flex-col">
@@ -42,7 +91,13 @@ const SavedProviders = () => {
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             </div>
-                                            <button className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm text-red-500 hover:scale-110 transition-transform active:scale-95">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    toggleSavedProvider(provider.id);
+                                                }}
+                                                className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm text-red-500 hover:scale-110 transition-transform active:scale-95"
+                                            >
                                                 <span className="material-icons text-xl">favorite</span>
                                             </button>
                                             {provider.verified && (
@@ -76,7 +131,7 @@ const SavedProviders = () => {
                                                     <p className="text-xs text-gray-400 font-medium uppercase">Rate</p>
                                                     <div className="flex items-baseline gap-0.5">
                                                         <span className="text-lg font-black text-gray-900">{provider.rate}</span>
-                                                        <span className="text-xs text-gray-500 font-medium">/hr</span>
+                                                        <span className="text-xs text-gray-500 font-medium">{provider.rate !== 'Negotiable' ? '' : ''}</span>
                                                     </div>
                                                 </div>
                                                 <Link 

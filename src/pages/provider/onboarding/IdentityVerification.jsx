@@ -4,7 +4,7 @@ import OnboardingLayout from './OnboardingLayout';
 import { useProviderOnboarding } from '../../../context/ProviderOnboardingContext';
 import { db, storage, auth } from '../../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 const IdentityVerification = () => {
@@ -59,8 +59,9 @@ const IdentityVerification = () => {
         // 3. Prepare Data for Firestore
         const providerData = {
             // Professional Info
-            displayName: onboardingData.businessName || user.displayName, // Use business name as display name? Or keep strict?
+            displayName: onboardingData.businessName || user.displayName, 
             businessName: onboardingData.businessName,
+            phoneNumber: onboardingData.phoneNumber,
             category: onboardingData.category,
             description: onboardingData.description,
             address: onboardingData.location && typeof onboardingData.location === 'string' ? onboardingData.location : onboardingData.address, // Make sure address is string
@@ -95,15 +96,39 @@ const IdentityVerification = () => {
             providerData.photoURL = profileURL;
         }
 
-        // 4. Update User Document
-        await updateDoc(doc(db, "users", user.uid), providerData);
 
-        toast.success("Application submitted successfully!", { id: toastId });
+        // 4. Update User Document
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+            ...providerData,
+            verificationStatus: 'pending' // Explicitly set status for admin query
+        });
+
+        // 5. Create Verification Request for Admin Panel
+        try {
+            await addDoc(collection(db, "verifications"), {
+                userId: user.uid,
+                providerName: onboardingData.businessName || user.displayName || 'New Provider',
+                email: user.email,
+                service: onboardingData.category || 'Standard Service',
+                status: 'pending',
+                submittedAt: serverTimestamp(),
+                documents: {
+                    idFront: idURL,
+                    businessLicense: licenseURL
+                }
+            });
+        } catch (verError) {
+            console.error("Error creating verification ticket:", verError);
+            // Proceed anyway as user profile is updated
+        }
+
+        toast.success("Application submitted successfully!");
         navigate('/provider/onboarding/status');
 
     } catch (error) {
         console.error("Submission error:", error);
-        toast.error("Failed to submit application: " + error.message, { id: toastId });
+        toast.error("Failed to submit application: " + error.message);
     } finally {
         setLoading(false);
     }

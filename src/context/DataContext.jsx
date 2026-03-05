@@ -10,7 +10,10 @@ import {
   serverTimestamp,
   updateDoc,
   doc,
-  onSnapshot 
+  getDoc,
+  onSnapshot,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -34,6 +37,21 @@ export function DataProvider({ children }) {
   const [jobs, setJobs] = useState([]);
   const [earnings, setEarnings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [savedProviderIds, setSavedProviderIds] = useState([]);
+
+  // Fetch Saved Providers List (Customer)
+  useEffect(() => {
+    if (currentUser?.role === 'customer') {
+      const unsub = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().savedProviders) {
+          setSavedProviderIds(docSnap.data().savedProviders);
+        } else {
+          setSavedProviderIds([]);
+        }
+      });
+      return () => unsub();
+    }
+  }, [currentUser]);
 
   // Fetch Requests (Customer) - Real-time
   useEffect(() => {
@@ -152,6 +170,27 @@ export function DataProvider({ children }) {
     }
   };
 
+  const toggleSavedProvider = async (providerId) => {
+    if (!currentUser) return;
+    const userRef = doc(db, "users", currentUser.uid);
+    try {
+        if (savedProviderIds.includes(providerId)) {
+            await updateDoc(userRef, {
+                savedProviders: arrayRemove(providerId)
+            });
+            toast.success("Provider removed from favorites");
+        } else {
+            await updateDoc(userRef, {
+                savedProviders: arrayUnion(providerId)
+            });
+            toast.success("Provider saved to favorites");
+        }
+    } catch (error) {
+        console.error("Error toggling saved provider:", error);
+        toast.error("Failed to update favorites");
+    }
+  };
+
   const getProviders = async (category = null) => {
     try {
       let q = query(
@@ -189,7 +228,9 @@ export function DataProvider({ children }) {
     earnings,
     loading,
     createRequest,
-    getProviders
+    getProviders,
+    savedProviderIds, 
+    toggleSavedProvider
   };
 
   return (

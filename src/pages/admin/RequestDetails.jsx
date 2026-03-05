@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import { db } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const RequestDetails = () => {
     const { id } = useParams();
@@ -8,27 +10,58 @@ const RequestDetails = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // MOCK API FETCH
-        setTimeout(() => {
-            setRequest({
-                id: id,
-                customer: { name: 'Tunde Bakare', id: 101, email: 'tunde@example.com' },
-                provider: { name: 'Chidubem Okafor', id: 1, email: 'chidubem@example.com', service: 'Plumbing' },
-                service: 'Plumbing Repair',
-                description: 'Kitchen sink is leaking profusely and needs urgent repair. Water is flooding the cabinet.',
-                status: 'In Progress',
-                date: 'Oct 24, 2023',
-                amount: '₦15,000',
-                location: '123 Admiralty Way, Lekki Phase 1',
-                timeline: [
-                    { status: 'Request Created', date: 'Oct 24, 10:00 AM', completed: true },
-                    { status: 'Provider Assigned', date: 'Oct 24, 10:15 AM', completed: true },
-                    { status: 'Work Started', date: 'Oct 24, 11:30 AM', completed: true },
-                    { status: 'Completed', date: '-', completed: false },
-                ]
-            });
-            setLoading(false);
-        }, 1000);
+        const fetchRequest = async () => {
+            try {
+                const docRef = doc(db, 'requests', id);
+                const snap = await getDoc(docRef);
+                
+                if (snap.exists()) {
+                    const data = snap.data();
+                    let customer = { id: data.customerId, name: data.customerName || 'Unknown', email: 'N/A' };
+                    let provider = null;
+
+                    if (data.customerId) {
+                         const userSnap = await getDoc(doc(db, 'users', data.customerId));
+                         if (userSnap.exists()) {
+                             const u = userSnap.data();
+                             customer = { id: userSnap.id, name: u.fullName || 'User', email: u.email };
+                         }
+                    }
+
+                    if (data.providerId) {
+                         const provSnap = await getDoc(doc(db, 'users', data.providerId));
+                         if (provSnap.exists()) {
+                             const p = provSnap.data();
+                             provider = { id: provSnap.id, name: p.fullName || 'Provider', service: p.serviceType || 'Service', email: p.email };
+                         }
+                    }
+                    
+                    // Simple timeline based on status
+                    const timeline = [
+                        { status: 'Request Created', date: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'N/A', completed: true },
+                        { status: 'In Progress', date: data.status === 'In Progress' ? 'Now' : '-', completed: data.status === 'In Progress' || data.status === 'Completed' },
+                        { status: 'Completed', date: data.status === 'Completed' ? 'Done' : '-', completed: data.status === 'Completed' },
+                    ];
+
+                    setRequest({
+                        id: snap.id,
+                        status: data.status || 'Open',
+                        service: data.serviceType || 'Service',
+                        amount: data.budget ? `₦${data.budget}` : 'N/A',
+                        description: data.description || 'No Description',
+                        location: data.location || 'No Location',
+                        timeline: timeline,
+                        customer,
+                        provider
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRequest();
     }, [id]);
 
     if (loading) return <div className="p-10 text-center">Loading request details...</div>;
@@ -54,7 +87,7 @@ const RequestDetails = () => {
                     ]} 
                 />
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold text-gray-900">Request #{request.id}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Request #{request.id.slice(0,8)}</h1>
                     <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${getStatusColor(request.status)}`}>
                         {request.status}
                     </span>
@@ -117,7 +150,7 @@ const RequestDetails = () => {
                         <h3 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Customer</h3>
                         <div className="flex items-center gap-3 mb-3">
                             <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">
-                                {request.customer.name.charAt(0)}
+                                {(request.customer.name || '?').charAt(0)}
                             </div>
                             <div>
                                 <p className="font-bold text-gray-900">{request.customer.name}</p>
@@ -132,18 +165,24 @@ const RequestDetails = () => {
                     {/* Provider Card */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                         <h3 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Assigned Provider</h3>
-                         <div className="flex items-center gap-3 mb-3">
-                            <div className="h-10 w-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center font-bold">
-                                {request.provider.name.charAt(0)}
-                            </div>
-                            <div>
-                                <p className="font-bold text-gray-900">{request.provider.name}</p>
-                                <p className="text-xs text-gray-500">{request.provider.service}</p>
-                            </div>
-                        </div>
-                        <Link to={`/admin/users/${request.provider.id}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                            View Profile &rarr;
-                        </Link>
+                        {request.provider ? (
+                             <>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="h-10 w-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center font-bold">
+                                        {request.provider.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900">{request.provider.name}</p>
+                                        <p className="text-xs text-gray-500">{request.provider.service}</p>
+                                    </div>
+                                </div>
+                                <Link to={`/admin/users/${request.provider.id}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                    View Profile &rarr;
+                                </Link>
+                             </>
+                        ) : (
+                            <p className="text-sm text-gray-500 italic text-center py-4">No provider assigned</p>
+                        )}
                     </div>
 
                     {/* Actions */}

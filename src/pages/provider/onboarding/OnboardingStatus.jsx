@@ -2,15 +2,55 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../../context/AuthContext';
 
 const OnboardingStatus = () => {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   // Status will always be pending/under-review for now as per requirements
-  const status = 'pending'; 
+  const status = currentUser?.isVerified !== false ? 'approved' : 'pending'; 
+
+  const handleLogout = async () => {
+    try {
+        await logout();
+        navigate('/login');
+    } catch (error) {
+        console.error("Failed to logout", error);
+    }
+  };
+
+  if (status === 'approved') {
+      return (
+        <OnboardingLayout title="Application Status" step={4}>
+            <div className="bg-surface-light rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center justify-center p-12 min-h-[400px]">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center text-center max-w-lg"
+                >
+                    <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6 relative">
+                        <span className="material-symbols-outlined text-4xl text-green-500">check_circle</span>
+                    </div>
+                    
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Approved!</h2>
+                    <p className="text-gray-500 mb-8">
+                        Congratulations! Your provider account has been verified. You can now access the dashboard and start accepting jobs.
+                    </p>
+
+                    <button 
+                        onClick={() => navigate('/provider/dashboard')}
+                        className="w-full py-3 px-4 bg-primary hover:bg-green-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-green-200"
+                    >
+                        Go to Dashboard
+                    </button>
+                </motion.div>
+            </div>
+        </OnboardingLayout>
+      );
+  }
 
   return (
     <OnboardingLayout title="Application Status" step={4}>
-      
       <div className="bg-surface-light rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center justify-center p-12 min-h-[400px]">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -42,10 +82,11 @@ const OnboardingStatus = () => {
 
             <div className="flex flex-col w-full gap-3">
                  <button 
-                  onClick={() => navigate('/provider/dashboard')}
-                  className="w-full py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition-colors shadow-sm"
+                  onClick={handleLogout}
+                  className="w-full py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
                  >
-                  Go to Dashboard (View Only)
+                  <span className="material-symbols-outlined">logout</span>
+                  Sign Out
                  </button>
             </div>
           </motion.div>

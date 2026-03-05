@@ -13,8 +13,18 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in or login successful
+  React.useEffect(() => {
+    if (currentUser) {
+      if (currentUser.role === 'admin') navigate('/admin/dashboard', { replace: true });
+      else if (currentUser.role === 'provider') navigate('/provider/dashboard', { replace: true });
+      else if (currentUser.role === 'customer') navigate('/dashboard', { replace: true });
+      // If role is undefined, maybe wait or send to onboarding (handled by ProtectedRoute logic usually)
+    }
+  }, [currentUser, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,23 +39,16 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const userCredential = await login(formData.email, formData.password);
-      
-      // Navigate based on role (fetched from AuthContext listener)
-      // Note: We might need a moment for the context to update the currentUser
-      // But typically onAuthStateChanged handles this.
-      // For immediate redirection, we can rely on ProtectedRoute logic or 
-      // fetch the doc again here if needed, but App.jsx routing handles most.
-      
+      await login(formData.email, formData.password);
       toast.success("Welcome back!");
-      navigate('/dashboard'); 
+      // Navigation is now handled by the useEffect above
     } catch(err) {
       setError('Failed to login. Please check your credentials.');
       console.error(err);
       toast.error('Login failed');
-    } finally {
       setLoading(false);
     }
+    // Don't set loading false on success, as we are navigating away
   };
 
   return (
@@ -60,7 +63,7 @@ const Login = () => {
       <div className="hidden lg:flex lg:w-[45%] bg-primary/10 relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=2684&auto=format&fit=crop"
+            src="/Taskmate.png"
             alt="Workspace"
             className="w-full h-full object-cover opacity-90"
           />

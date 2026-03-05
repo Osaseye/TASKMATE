@@ -1,132 +1,118 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { db } from '../../lib/firebase';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 const Commission = () => {
-    // MOCK DATA: Providers who owe commission - EMPTY STATE
-    const [outstandingCommissions, setOutstandingCommissions] = useState([]);
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [totalRevenue, setTotalRevenue] = useState(0);
 
-    // MOCK DATA: Confirmed payments - EMPTY STATE
-    const history = [];
+    useEffect(() => {
+        // Query completed requests to calculate commission
+        // Note: In a real app, you'd have a separate 'transactions' or 'payments' collection
+        const q = query(
+            collection(db, 'requests'), 
+            where('status', '==', 'Completed')
+        );
 
-    const markAsPaid = (id) => {
-        // API call to update status
-        setOutstandingCommissions(outstandingCommissions.filter(c => c.id !== id));
-        toast.success('Payment confirmed successfully');
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            let revenue = 0;
+            const data = snapshot.docs.map(doc => {
+                const req = doc.data();
+                const commission = (req.budget || 0) * 0.10; // 10% Commission
+                revenue += commission;
+                return {
+                    id: doc.id,
+                    ...req,
+                    commission,
+                    rawDate: req.updatedAt || req.createdAt
+                };
+            }).sort((a, b) => (b.rawDate?.seconds || 0) - (a.rawDate?.seconds || 0));
+
+            setTransactions(data);
+            setTotalRevenue(revenue);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-fade-in relative z-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Commission Management</h2>
-                    <p className="text-gray-500">Track and collect weekly platform fees.</p>
+                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Commission & Revenue</h2>
+                    <p className="text-gray-500">Track platform earnings from completed jobs.</p>
                 </div>
-                <div className="flex gap-4">
-                    <div className="bg-green-50 text-green-700 px-4 py-2 rounded-xl border border-green-100 shadow-sm">
-                        <p className="text-xs uppercase font-bold tracking-wider">Collected (Oct)</p>
-                        <p className="text-xl font-black">₦0.00</p>
-                    </div>
-                    <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-xl border border-orange-100 shadow-sm">
-                        <p className="text-xs uppercase font-bold tracking-wider">Pending</p>
-                        <p className="text-xl font-black">₦0.00</p>
-                    </div>
+                
+                <div className="bg-green-50 px-6 py-3 rounded-2xl border border-green-100 flex flex-col items-end">
+                    <span className="text-xs text-green-600 font-bold uppercase tracking-wider">Total Revenue</span>
+                    <span className="text-2xl font-extrabold text-green-700">{formatCurrency(totalRevenue)}</span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Outstanding Payments */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-900">Outstanding Balances</h3>
-                            <button className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50">Download Report</button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100 font-semibold">
-                                    <tr>
-                                        <th className="px-6 py-3">Provider</th>
-                                        <th className="px-6 py-3">Week</th>
-                                        <th className="px-6 py-3 text-center">Jobs</th>
-                                        <th className="px-6 py-3 text-right">Amount Due</th>
-                                        <th className="px-6 py-3 text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-gray-600">
-                                    {outstandingCommissions.length > 0 ? (
-                                        outstandingCommissions.map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 font-bold text-gray-900">{item.provider}</td>
-                                                <td className="px-6 py-4 text-xs">{item.week}</td>
-                                                <td className="px-6 py-4 text-center">{item.jobs}</td>
-                                                <td className="px-6 py-4 text-right font-black text-gray-900">
-                                                    {item.owe}
-                                                    {item.status === 'Overdue' && (
-                                                        <span className="block text-[10px] text-red-500 font-bold uppercase mt-0.5">Overdue</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button 
-                                                        onClick={() => markAsPaid(item.id)}
-                                                        className="text-xs font-bold bg-green-600 text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-green-700 transition-colors"
-                                                    >
-                                                        Confirm Payment
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="5" className="px-6 py-8 text-center text-gray-400">
-                                                <span className="material-icons-outlined text-2xl mb-1">check_circle</span>
-                                                <p>No outstanding commissions.</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-900">Recent Transactions</h3>
+                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{transactions.length} Completed Jobs</span>
                 </div>
-
-                {/* Right Column: Recent History */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-bold text-gray-900 mb-4">Payment History</h3>
-                        <div className="space-y-4 relative before:absolute before:inset-y-0 before:left-2 before:w-0.5 before:bg-gray-100 before:ml-1.5">
-                            {history.map((txn) => (
-                                <div key={txn.id} className="relative pl-8">
-                                    <div className="absolute left-0 top-1 h-5 w-5 rounded-full bg-green-100 border-2 border-white flex items-center justify-center z-10">
-                                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900">{txn.provider}</p>
-                                        <p className="text-xs text-gray-400">Paid {txn.amount} via {txn.method}</p>
-                                        <p className="text-[10px] text-gray-300 mt-1">{txn.date}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-full mt-6 text-xs font-bold text-gray-500 hover:text-gray-900 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors">
-                            View Full History
-                        </button>
-                    </div>
-
-                    <div className="bg-gray-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h3 className="font-bold text-lg mb-2">Commission Settings</h3>
-                            <p className="text-gray-400 text-xs mb-4">Current platform fee applied to all completed jobs.</p>
-                            <div className="flex items-center justify-between mb-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
-                                <span className="text-sm font-medium">Platform Fee</span>
-                                <span className="font-bold text-xl text-green-400">10%</span>
-                            </div>
-                            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-3 rounded-xl transition-colors">
-                                Update Percentage
-                            </button>
-                        </div>
-                        {/* Decorative background blur */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-600 rounded-full blur-3xl opacity-10 transform translate-x-10 -translate-y-10"></div>
-                    </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-50 text-xs uppercase text-gray-400 font-bold">
+                            <tr>
+                                <th className="px-6 py-4">Job ID</th>
+                                <th className="px-6 py-4">Service</th>
+                                <th className="px-6 py-4">Provider</th>
+                                <th className="px-6 py-4 text-right">Job Amount</th>
+                                <th className="px-6 py-4 text-right">Commission (10%)</th>
+                                <th className="px-6 py-4 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {transactions.length > 0 ? (
+                                transactions.map((tx) => (
+                                    <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-mono text-xs">{tx.id.slice(0, 8)}...</td>
+                                        <td className="px-6 py-4 font-medium text-gray-900">{tx.category || tx.title}</td>
+                                        <td className="px-6 py-4">
+                                            {tx.providerName || tx.serviceProvider || 'Unknown Provider'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-medium">
+                                            {formatCurrency(tx.budget || 0)}
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-bold text-green-600">
+                                            + {formatCurrency(tx.commission)}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                Paid
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
+                                        No completed jobs found yet.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

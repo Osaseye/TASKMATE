@@ -13,8 +13,19 @@ const RequestDetails = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [request, setRequest] = useState(null);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [customReason, setCustomReason] = useState('');
+
+    const rejectionReasons = [
+        "Price is too low",
+        "Schedule conflict",
+        "Location is too far",
+        "Service not offered",
+        "Other"
+    ];
 
     useEffect(() => {
         if (!id) return;
@@ -33,30 +44,39 @@ const RequestDetails = () => {
         return () => unsubscribe();
     }, [id, navigate]);
 
-    const handleAccept = async () => {
-        if (!currentUser) return;
+    const handleDecline = async () => {
+        if (!currentUser || !rejectReason) {
+            if (!rejectReason) toast.error("Please select a reason");
+            return;
+        }
+
+        const finalReason = rejectReason === 'Other' ? customReason : rejectReason;
+        if (rejectReason === 'Other' && !customReason) {
+            toast.error("Please specify the reason");
+            return;
+        }
         
         try {
             const reqRef = doc(db, "requests", id);
             await updateDoc(reqRef, {
-                status: 'Scheduled', // Or 'In-Progress' depending on workflow
-                providerId: currentUser.uid,
-                providerName: currentUser.displayName,
-                providerPhoto: currentUser.photoURL,
-                acceptedAt: new Date(),
+                status: 'Declined', 
+                rejectedBy: currentUser.uid,
+                rejectedByName: currentUser.displayName,
+                rejectionReason: finalReason,
                 timeline: arrayUnion({
-                    title: 'Provider Accepted',
+                    title: 'Provider Declined',
+                    description: `Reason: ${finalReason}`,
                     time: new Date().toLocaleTimeString(),
-                    status: 'completed'
+                    date: new Date().toDateString(),
+                    status: 'error'
                 })
             });
-            toast.success("Job Accepted!", {
-                 description: "You can find this job in 'My Jobs'."
-            });
-            navigate(`/provider/jobs`);
+            toast.success("Job Declined");
+            setShowRejectModal(false);
+            navigate(`/provider/requests`);
         } catch (error) {
-            console.error("Error accepting job:", error);
-            toast.error("Failed to accept job");
+            console.error("Error declining job:", error);
+            toast.error("Failed to decline job");
         }
     };
     
@@ -69,8 +89,101 @@ const RequestDetails = () => {
         { label: `View Request #${request.id.substring(0,6)}`, href: '#' }
     ];
 
+    const DEBT_LIMIT = 5000;
+    const isRestricted = (currentUser?.commissionBalance || 0) > DEBT_LIMIT;
+
+    const handleAccept = async () => {
+        if (!currentUser) return;
+        
+        if (isRestricted) {
+            toast.error("Account Restricted", {
+                description: `You have exceeded the commission debt limit of ₦${DEBT_LIMIT.toLocaleString()}. Please clear your debt to accept new jobs.`
+            });
+            return;
+        }
+        
+        try {
+            const reqRef = doc(db, "requests", id);
+            await updateDoc(reqRef, {
+                status: 'Scheduled',
+                providerId: currentUser.uid,
+                providerName: currentUser.displayName,
+                providerPhoto: currentUser.photoURL,
+                providerPhone: currentUser.phoneNumber, // Include phone number
+                acceptedAt: new Date(),
+                timeline: arrayUnion({
+                    title: 'Provider Accepted',
+                    description: `${currentUser.displayName || 'Provider'} accepted the job.`,
+                    time: new Date().toLocaleTimeString(),
+                    date: new Date().toDateString(),
+                    status: 'completed'
+                })
+            });
+            toast.success("Job Accepted!", {
+                 description: "You can find this job in 'My Jobs'."
+            });
+            navigate(`/provider/jobs`);
+        } catch (error) {
+            console.error("Error accepting job:", error);
+            toast.error("Failed to accept job");
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+        <div className="min-h-screen bg-gray-50 flex font-sans text-gray-800">
+            {showRejectModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+                    >
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Decline Request</h3>
+                        <p className="text-sm text-gray-500 mb-4">Please let the customer know why you cannot accept this job. This helps them adjust their request.</p>
+                        
+                        <div className="space-y-3 mb-6">
+                            {rejectionReasons.map((reason) => (
+                                <label key={reason} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="rejectReason"
+                                        value={reason}
+                                        checked={rejectReason === reason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        className="text-primary focus:ring-primary"
+                                    />
+                                    <span className="text-gray-700 font-medium">{reason}</span>
+                                </label>
+                            ))}
+                            
+                            {rejectReason === 'Other' && (
+                                <textarea
+                                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm mt-2"
+                                    placeholder="Please specify..."
+                                    rows="3"
+                                    value={customReason}
+                                    onChange={(e) => setCustomReason(e.target.value)}
+                                ></textarea>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setShowRejectModal(false)}
+                                className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDecline}
+                                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                            >
+                                Decline Job
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
             <ProviderSidebar />
             <ProviderMobileNavBar />
 
@@ -154,13 +267,21 @@ const RequestDetails = () => {
                                 <div className="grid grid-cols-1 gap-3">
                                     <button 
                                         onClick={handleAccept}
-                                        className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
+                                        disabled={isRestricted}
+                                        className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg ${
+                                            isRestricted 
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' 
+                                            : 'bg-primary text-white hover:bg-primary-dark shadow-primary/20'
+                                        }`}
                                     >
-                                        Accept Job
+                                        {isRestricted ? 'Account Restricted (Debt Limit)' : 'Accept Job'}
                                     </button>
-                                    <Link to="/provider/requests" className="w-full py-3 bg-white text-gray-700 font-bold border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors block text-center">
+                                    <button 
+                                        onClick={() => setShowRejectModal(true)}
+                                        className="w-full py-3 bg-white text-gray-700 font-bold border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors block text-center"
+                                    >
                                         Decline / Back
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                         </div>

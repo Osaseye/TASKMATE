@@ -5,10 +5,12 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
+import { useData } from '../../context/DataContext';
 
 const ProviderProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { savedProviderIds, toggleSavedProvider } = useData();
     const [activeTab, setActiveTab] = useState('About');
     const [provider, setProvider] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -89,6 +91,17 @@ const ProviderProfile = () => {
                                 <span className="material-icons-outlined text-sm">arrow_back</span>
                                 Back
                             </Link>
+                        </div>
+
+                        <div className="absolute top-6 right-6 z-10">
+                            <button 
+                                onClick={() => toggleSavedProvider(id)}
+                                className="flex items-center justify-center h-10 w-10 bg-white/20 backdrop-blur-md rounded-full hover:bg-white/30 transition-all border border-white/10 active:scale-95"
+                            >
+                                <span className={`material-icons ${savedProviderIds.includes(id) ? 'text-red-500' : 'text-white'}`}>
+                                    {savedProviderIds.includes(id) ? 'favorite' : 'favorite_border'}
+                                </span>
+                            </button>
                         </div>
                     </div>
 
@@ -195,7 +208,12 @@ const ProviderProfile = () => {
                                                     provider.reviews.map((review, idx) => (
                                                         <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                                                             <div className="flex items-center justify-between mb-2">
-                                                                <div className="font-bold text-gray-900">{review.user || 'Anonymous'}</div>
+                                                                <div className="flex items-center gap-2">
+                                                                     <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200">
+                                                                        {review.user ? review.user.charAt(0).toUpperCase() : 'C'}
+                                                                    </div>
+                                                                    <div className="font-bold text-gray-900">{review.user || 'Customer'}</div>
+                                                                </div>
                                                                 <span className="text-xs text-gray-400">{review.date || 'Recent'}</span>
                                                             </div>
                                                             <div className="flex items-center mb-2 text-yellow-500">
@@ -203,7 +221,14 @@ const ProviderProfile = () => {
                                                                     <span key={i} className={`material-icons-outlined text-sm ${i < (review.rating || 0) ? 'text-yellow-500' : 'text-gray-300'}`}>star</span>
                                                                 ))}
                                                             </div>
-                                                            <p className="text-gray-600 text-sm">{review.text || review.comment}</p>
+                                                            <p className="text-gray-600 text-sm mb-2">{review.text || review.comment}</p>
+                                                            {review.tags && review.tags.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 text-xs">
+                                                                    {review.tags.map((tag, i) => (
+                                                                        <span key={i} className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-gray-500">{tag}</span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))
                                                 ) : (

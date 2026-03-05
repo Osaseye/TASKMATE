@@ -77,7 +77,7 @@ const MyRequests = () => {
                                     return (
                                     <div 
                                         key={req.id}
-                                        onClick={() => navigate(req.status === 'Completed' ? '/customer/service-review' : '/customer/request-status')}
+                                        onClick={() => navigate(req.status === 'Completed' ? `/customer/service-review/${req.id}` : `/customer/request-status/${req.id}`)}
                                         className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all cursor-pointer group"
                                     >
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

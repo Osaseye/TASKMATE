@@ -40,6 +40,7 @@ const Onboarding = () => {
 
   const [formData, setFormData] = useState({
     displayName: currentUser?.displayName || '',
+    phoneNumber: '', 
     location: '',
     photo: null,
     selectedCategories: [],
@@ -227,6 +228,17 @@ const Onboarding = () => {
                         </div>
 
                         <div>
+                            <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number</label>
+                            <input 
+                                type="tel" 
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium"
+                                placeholder="e.g. 08012345678"
+                                value={formData.phoneNumber}
+                                onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                            />
+                        </div>
+
+                        <div>
                             <div className="flex justify-between items-center mb-2">
                                 <label className="block text-sm font-bold text-gray-900">Primary Location</label>
                                 <button 
@@ -385,6 +397,7 @@ const Onboarding = () => {
                                         // Save to Firebase
                                         await updateUserProfile({
                                             displayName: formData.displayName,
+                                            phoneNumber: formData.phoneNumber,
                                             location: formData.location,
                                             preferences: formData.selectedCategories,
                                             photoURL: photoURL,

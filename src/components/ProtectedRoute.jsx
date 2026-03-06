@@ -18,6 +18,26 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Handle Suspended Users across all roles
+  if (currentUser.status === 'Suspended') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-100 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="material-symbols-outlined text-4xl text-red-500">block</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Suspended</h2>
+          <p className="text-gray-600 mb-8">
+            Your account has been suspended by an administrator. Please contact support for more information and to request reactivation.
+          </p>
+          <a href="mailto:support@taskmate.com" className="block w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors">
+            Contact Support
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // Check verification status for providers
   // Only redirect if explicitly false (new users). Allow undefined (existing/legacy users).
   if (currentUser.role === 'provider' && currentUser.isVerified === false) {

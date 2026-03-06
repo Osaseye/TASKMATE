@@ -67,19 +67,27 @@ const VerificationDetails = () => {
     };
 
     const handleReject = async () => {
-        if(!window.confirm("Are you sure you want to reject this application?")) return;
+        const reason = window.prompt("Please provide a reason for rejecting this application:");
+        if (reason === null) return; // user cancelled
+        if (!reason.trim()) {
+            toast.error("A rejection reason is required.");
+            return;
+        }
+
         const targetUserId = verification.uid || verification.userId;
 
         try {
             await updateDoc(doc(db, 'verifications', id), {
                 status: 'rejected',
+                rejectionReason: reason.trim(),
                 reviewedAt: new Date().toISOString()
             });
             // Ensure user remains unverified
             if (targetUserId) {
                 await updateDoc(doc(db, 'users', targetUserId), {
                     isVerified: false,
-                    verificationStatus: 'rejected'
+                    verificationStatus: 'rejected',
+                    rejectionReason: reason.trim()
                 });
             }
             toast.success("Provider rejected");

@@ -33,7 +33,7 @@ const Requests = () => {
             setRequests(reqs);
             setLoading(false);
         }, (error) => {
-            console.error("Error fetching requests:", error);
+            console.error("Error fetching requests:", error);2
             // Fallback if index missing or other error
             toast.error("Could not load requests. Check console.");
             setLoading(false);

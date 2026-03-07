@@ -38,7 +38,7 @@ const SavedProviders = () => {
                 const providerSnapshots = await Promise.all(providerPromises);
                 
                 const providers = providerSnapshots
-                    .filter(snap => snap.exists())
+                    .filter(snap => snap.exists() && snap.data().isVerified === true && snap.data().status !== 'Suspended')
                     .map(snap => {
                         const data = snap.data();
                         return {

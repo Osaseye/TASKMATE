@@ -199,11 +199,6 @@ export function DataProvider({ children }) {
       );
       
       if (category && category !== 'All') {
-        // This assumes providers have a 'services' array or 'category' field
-        // Since we didn't strictly define provider profile structure yet, 
-        // we might need to adjust this based on how provider profile updates are handled.
-        // For now, let's assume filtering happens client side or we add a simple check
-        // Or we can query by 'preferences' if that's where services are stored
          q = query(
             collection(db, "users"), 
             where("role", "==", "provider"),
@@ -212,10 +207,13 @@ export function DataProvider({ children }) {
       }
 
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const providers = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Only return verified and active providers
+      return providers.filter(p => p.isVerified === true && p.status !== 'Suspended');
     } catch (error) {
       console.error("Error fetching providers:", error);
       return [];

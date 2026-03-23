@@ -90,7 +90,7 @@ const InvoiceUploadModal = ({ isOpen, onClose, onUpload }) => {
                         {/* File Upload Area */}
                         
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Proof of Payment (Optional)</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Proof of Payment <span className="text-red-500">*</span></label>
                             <div 
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
@@ -144,7 +144,7 @@ const InvoiceUploadModal = ({ isOpen, onClose, onUpload }) => {
                         </button>
                         <button 
                             onClick={handleSubmit}
-                            disabled={!amount}
+                            disabled={!amount || !file}
                             className="px-6 py-2.5 rounded-lg bg-primary text-primary-content font-bold shadow-lg shadow-primary/20 hover:bg-green-400 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             <span>Complete Job</span>

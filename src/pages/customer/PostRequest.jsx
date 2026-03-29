@@ -305,31 +305,25 @@ const PostRequest = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="category">Category</label>
-                                                <select
-                                                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none ${category ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="category">Category / Service Needed</label>
+                                                <input
+                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none"
                                                     id="category"
                                                     name="category"
                                                     value={category}
                                                     onChange={(e) => setCategory(e.target.value)}
-                                                    disabled={!!initialCategory} // Only disable if passed via state
-                                                >
-                                                    {/* Ensure unique options */}
-                                                    {[
-                                                        'Plumbing', 'Electrical', 'Cleaning', 
-                                                        'Moving', 'Painting', 'Landscaping', 'Other'
-                                                    ].includes(category) || !category ? null : <option value={category}>{category}</option>}
-                                                    
-                                                    <option value="Plumbing">Plumbing</option>
-                                                    <option value="Electrical">Electrical</option>
-                                                    <option value="Cleaning">Cleaning</option>
-                                                    <option value="Moving">Moving</option>
-                                                    <option value="Painting">Painting</option>
-                                                    <option value="Landscaping">Landscaping</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                                {/* If disabled, we must include a hidden input to submit the value */}
-                                                {category && <input type="hidden" name="category" value={category} />}
+                                                    placeholder="Type the service (e.g. Plumbing, Cleaning)"
+                                                    list="category-suggestions"
+                                                />
+                                                <datalist id="category-suggestions">
+                                                    <option value="Plumbing" />
+                                                    <option value="Electrical" />
+                                                    <option value="Cleaning" />
+                                                    <option value="Moving" />
+                                                    <option value="Painting" />
+                                                    <option value="Carpentry" />
+                                                    <option value="AC Repair" />
+                                                </datalist>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="budget">Budget (₦)</label>

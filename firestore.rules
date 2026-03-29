@@ -16,7 +16,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
     }
 
     // Check if the user owns the resource (based on userId field or doc ID)
@@ -32,7 +32,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isOwner(userId) || isAdmin() || isAuthenticated(); // Allow auth users to leave reviews
+      allow update: if isAuthenticated(); // EXACTLY THIS - Do not include isAdmin() here!
       allow delete: if isAdmin(); // Only admins can delete users
     }
 

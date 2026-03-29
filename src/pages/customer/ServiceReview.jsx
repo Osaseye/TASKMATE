@@ -64,10 +64,12 @@ const ServiceReview = () => {
         }
 
         setSubmitting(true);
+        let requestUpdated = false;
+
+        // 1. Update the Request
         try {
+            console.log("Attempting to update Request ID:", id);
             const requestRef = doc(db, "requests", id);
-            
-            // Build review object
             const reviewData = {
                 rating,
                 comment: feedback,
@@ -78,6 +80,7 @@ const ServiceReview = () => {
             await updateDoc(requestRef, {
                 review: reviewData,
                 status: 'Completed', 
+                updatedAt: serverTimestamp(),
                 timeline: arrayUnion({
                     title: 'Review Submitted',
                     description: `Customer rated ${rating}/5 stars.`,
@@ -86,9 +89,17 @@ const ServiceReview = () => {
                     status: 'completed'
                 })
             });
+            console.log("Successfully updated Request document!");
+            requestUpdated = true;
+        } catch (error) {
+            console.error("FAILED TO UPDATE REQUEST:", error);
+            toast.error("Failed to update the request document.");
+        }
 
-            // Update Provider Profile with Review
-            if (request.providerId) {
+        // 2. Update the Provider
+        if (requestUpdated && request.providerId) {
+            try {
+                console.log("Attempting to update Provider ID:", request.providerId);
                 const providerRef = doc(db, "users", request.providerId);
                 const providerSnap = await getDoc(providerRef);
                 
@@ -114,17 +125,22 @@ const ServiceReview = () => {
                         rating: Number(newRating.toFixed(1)),
                         jobsCompleted: increment(1)
                     });
+                    console.log("Successfully updated Provider document!");
+                    
+                    // Only show success and navigate if BOTH succeed
+                    toast.success("Thank you for your review!");
+                    navigate('/dashboard');
+                } else {
+                    console.log("Provider document does not exist!");
+                    toast.error("Could not find provider profile");
                 }
+            } catch (error) {
+                console.error("FAILED TO UPDATE PROVIDER:", error);
+                toast.error("Failed to update the provider's profile due to permissions.");
             }
-
-            toast.success("Thank you for your review!");
-            navigate('/dashboard');
-        } catch (error) {
-            console.error("Error submitting review:", error);
-            toast.error("Failed to submit review");
-        } finally {
-            setSubmitting(false);
         }
+        
+        setSubmitting(false);
     };
 
     if (loading) {
@@ -137,6 +153,7 @@ const ServiceReview = () => {
 
     if (!request) return null;
 
+    const hasReviewed = !!request.review;
     const dateStr = request.createdAt?.toDate ? format(request.createdAt.toDate(), 'MMM dd, yyyy') : 'Recently';
 
     return (
@@ -150,9 +167,17 @@ const ServiceReview = () => {
                             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
                                 <span className="material-icons-outlined text-4xl text-green-600">check_circle</span>
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-900">Service Completed!</h1>
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                {hasReviewed ? "Feedback Submitted!" : "Service Completed!"}
+                            </h1>
                             <p className="text-lg text-gray-500 max-w-lg mx-auto">
-                                The service for <span className="font-semibold text-gray-800">{request.title}</span> has been marked as complete. Please review the summary and rate your experience.
+                                {hasReviewed 
+                                  ? `You have already reviewed the service for ` 
+                                  : `The service for `}
+                                <span className="font-semibold text-gray-800">{request.title}</span> 
+                                {hasReviewed 
+                                  ? `. Thank you for your feedback!` 
+                                  : ` has been marked as complete. Please review the summary and rate your experience.`}
                             </p>
                         </div>
 
@@ -203,8 +228,9 @@ const ServiceReview = () => {
                                                     <button 
                                                         key={star} 
                                                         type="button" 
+                                                        disabled={hasReviewed}
                                                         onClick={() => setRating(star)}
-                                                        className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                                                        className={`focus:outline-none transition-transform ${!hasReviewed ? 'hover:scale-110 active:scale-95' : 'cursor-default'}`}
                                                     >
                                                         <span className={`material-icons-outlined text-4xl ${star <= rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`}>star</span>
                                                     </button>
@@ -216,10 +242,11 @@ const ServiceReview = () => {
                                             <label className="block text-sm font-medium text-gray-700 mb-2">What went well?</label>
                                             <div className="flex flex-wrap gap-2">
                                                 {['Punctuality', 'Professionalism', 'Quality of Work', 'Communication', 'Value'].map((tag) => (
-                                                    <label key={tag} className="cursor-pointer">
+                                                    <label key={tag} className={hasReviewed ? "cursor-default" : "cursor-pointer"}>
                                                         <input 
                                                             className="peer sr-only" 
                                                             type="checkbox"
+                                                            disabled={hasReviewed}
                                                             checked={tags.includes(tag)}
                                                             onChange={() => handleTagToggle(tag)}
                                                         />
@@ -238,6 +265,7 @@ const ServiceReview = () => {
                                                     className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border outline-none" 
                                                     id="feedback" 
                                                     name="feedback" 
+                                                    disabled={hasReviewed}
                                                     value={feedback}
                                                     onChange={(e) => setFeedback(e.target.value)}
                                                     placeholder="Tell us more about the service provided..." 
@@ -247,15 +275,17 @@ const ServiceReview = () => {
                                             <p className="mt-2 text-xs text-gray-500">Your review helps others in the TaskMate community.</p>
                                         </div>
                                         
-                                        <div className="border-t border-gray-100 pt-6 flex justify-end">
-                                            <button 
-                                                disabled={submitting}
-                                                type="submit" 
-                                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-70 disabled:cursor-not-allowed"
-                                            >
-                                                {submitting ? 'Submitting...' : 'Submit Review'}
-                                            </button>
-                                        </div>
+                                        {!hasReviewed && (
+                                            <div className="border-t border-gray-100 pt-6 flex justify-end">
+                                                <button 
+                                                    disabled={submitting}
+                                                    type="submit" 
+                                                    className="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                                >
+                                                    {submitting ? 'Submitting...' : 'Submit Review'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </form>
                                 </div>
                             </div>

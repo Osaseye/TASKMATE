@@ -49,22 +49,38 @@ const ProviderDashboard = () => {
         responseTime: '-'
     };
 
-    // Create activities feed from jobs
+    // Create activities feed from jobs (Expand to show review as separate activity if it exists)
     const activities = jobs
         .filter(j => j.providerId === currentUser?.uid)
-        .sort((a, b) => {
-             const dateA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
-             const dateB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
-             return dateB - dateA;
+        .flatMap(job => {
+            const eventList = [];
+            
+            // Base job status event
+            eventList.push({
+                id: job.id + '_status',
+                type: job.status === 'Completed' ? 'payment' : 'job_update',
+                title: job.status === 'Completed' ? 'Payment Received' : 'Job Update',
+                message: job.status === 'Completed' ? `You earned ₦${job.budget}` : `Status: ${job.status} for ${job.title}`,
+                timeMillis: job.updatedAt?.toMillis ? job.updatedAt.toMillis() : (job.createdAt?.toMillis ? job.createdAt.toMillis() : 0),
+                time: job.updatedAt?.toDate ? job.updatedAt.toDate().toLocaleDateString() : 'Recently'
+            });
+
+            // Review event
+            if (job.review) {
+                eventList.push({
+                    id: job.id + '_review',
+                    type: 'review',
+                    title: 'New Review Received',
+                    message: `Customer left a ${job.review.rating}-star review for ${job.title}`,
+                    timeMillis: job.updatedAt?.toMillis ? job.updatedAt.toMillis() : 0, // Since submission updates updatedAt
+                    time: job.updatedAt?.toDate ? job.updatedAt.toDate().toLocaleDateString() : 'Recently'
+                });
+            }
+
+            return eventList;
         })
-        .slice(0, 5)
-        .map(job => ({
-            id: job.id,
-            type: job.status === 'Completed' ? 'payment' : 'job_update',
-            title: job.status === 'Completed' ? 'Payment Received' : 'Job Update',
-            message: job.status === 'Completed' ? `You earned ₦${job.budget}` : `Status: ${job.status} for ${job.title}`,
-            time: job.updatedAt?.toDate ? job.updatedAt.toDate().toLocaleDateString() : 'Recently'
-        }));
+        .sort((a, b) => b.timeMillis - a.timeMillis)
+        .slice(0, 5);
     
     const handleDecline = (title) => {
         toast.success(`Declined request: ${title}`, {
@@ -356,8 +372,8 @@ const ProviderDashboard = () => {
                             {activities.length > 0 ? (
                                 activities.map((activity, i) => (
                                     <div key={i} className="relative z-10 flex gap-4">
-                                        <div className={`mt-1 h-2 w-2 rounded-full ring-4 ring-white ${activity.type === 'payment' ? 'bg-green-500' : 'bg-primary'}`}></div>
-                                        <div className="pb-4 border-l-2 border-gray-100 pl-4 last:border-0 last:pb-0 flex-1">
+                                        <div className={`mt-1 h-2 w-2 rounded-full ring-4 ring-white ${activity.type === 'payment' ? 'bg-green-500' : activity.type === 'review' ? 'bg-yellow-400' : 'bg-primary'}`}></div>
+                                        <div className="pb-4 border-l-[1.5px] border-gray-100 pl-4 last:border-0 last:pb-0 flex-1 relative -left-[-7px]">
                                             <p className="text-sm font-medium text-gray-900">{activity.title}</p>
                                             <p className="text-xs text-gray-500 mt-0.5">{activity.message}</p>
                                             <span className="text-[10px] text-gray-400 mt-1 block uppercase tracking-wider">{activity.time}</span>

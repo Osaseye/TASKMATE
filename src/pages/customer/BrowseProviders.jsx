@@ -39,15 +39,23 @@ const BrowseProviders = () => {
     useEffect(() => {
         const fetchProviders = async () => {
             setLoading(true);
-            const data = await getProviders(selectedCategory);
+            // Fetch all providers and then filter, since category might be in 'preferences' 
+            const data = await getProviders('All');
             setProviders(data);
             setLoading(false);
         };
         fetchProviders();
-    }, [selectedCategory, getProviders]);
+    }, [getProviders]);
 
     const handleApplyFilters = () => {
         let result = [...providers];
+
+        if (selectedCategory !== 'All') {
+            result = result.filter(p => 
+                (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+                (p.preferences && p.preferences.some(pref => pref.toLowerCase().includes(selectedCategory.toLowerCase())))
+            );
+        }
 
         if (searchQuery) {
             result = result.filter(p => 
@@ -126,7 +134,7 @@ const BrowseProviders = () => {
                                     <div>
                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Service Type</h3>
                                         <div className="space-y-3">
-                                            {['Cleaning', 'Plumbing', 'Electrical', 'Painting', 'Carpentry'].map(service => (
+                                            {['Cleaning', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'AC Repair', 'Moving', 'Pest Control', 'Other'].map(service => (
                                                 <label key={service} className="flex items-center group cursor-pointer">
                                                     <input 
                                                         className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer" 

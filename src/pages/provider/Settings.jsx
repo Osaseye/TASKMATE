@@ -28,6 +28,13 @@ const Settings = () => {
             <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
                 <header className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 md:px-8 h-16 flex items-center justify-between">
                     <h1 className="text-xl font-semibold text-gray-800">Settings</h1>
+                    <button 
+                        onClick={() => auth.signOut()}
+                        className="md:hidden flex items-center justify-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Logout"
+                    >
+                        <span className="material-symbols-outlined">logout</span>
+                    </button>
                 </header>
 
                 <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">

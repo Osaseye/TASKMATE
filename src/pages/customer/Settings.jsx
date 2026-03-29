@@ -192,9 +192,18 @@ const Settings = () => {
                 <div className="flex-1 overflow-y-auto pb-24 md:pb-8">
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         {/* Page Heading */}
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Account Settings</h2>
-                            <p className="text-gray-500 mt-2">Manage your personal information and security preferences.</p>
+                        <div className="mb-8 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black text-gray-900 tracking-tight">Account Settings</h2>
+                                <p className="text-gray-500 mt-2">Manage your personal information and security preferences.</p>
+                            </div>
+                            <button 
+                                onClick={() => auth.signOut()}
+                                className="md:hidden flex items-center justify-center h-10 w-10 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                                title="Logout"
+                            >
+                                <span className="material-icons-outlined">logout</span>
+                            </button>
                         </div>
                         
                         {renderTabs()}

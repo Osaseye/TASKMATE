@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { Toaster, toast } from 'sonner';
+import { auth } from '../../lib/firebase';
 
 const Settings = () => {
     const [notifications, setNotifications] = useState({
@@ -116,7 +117,10 @@ const Settings = () => {
 
                     {/* Danger Zone */}
                     <div className="pt-6">
-                        <button className="w-full py-4 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <button 
+                            onClick={() => auth.signOut()}
+                            className="w-full py-4 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
                             <span className="material-symbols-outlined">logout</span>
                             Log Out
                         </button>

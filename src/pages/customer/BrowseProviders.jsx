@@ -11,6 +11,10 @@ const BrowseProviders = () => {
     const [loading, setLoading] = useState(true);
     const [priceRange, setPriceRange] = useState(50000);
     const [selectedCategory, setSelectedCategory] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedRating, setSelectedRating] = useState(0);
+    const [sortBy, setSortBy] = useState("Recommended");
+    const [filteredProviders, setFilteredProviders] = useState([]);
 
     const tutorialSteps = [
         {
@@ -41,6 +45,38 @@ const BrowseProviders = () => {
         };
         fetchProviders();
     }, [selectedCategory, getProviders]);
+
+    const handleApplyFilters = () => {
+        let result = [...providers];
+
+        if (searchQuery) {
+            result = result.filter(p => 
+                p.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (p.preferences && p.preferences.some(pref => pref.toLowerCase().includes(searchQuery.toLowerCase())))
+            );
+        }
+
+        if (selectedRating > 0) {
+            result = result.filter(p => (Number(p.rating) || 0) >= selectedRating);
+        }
+
+        if (priceRange) {
+            result = result.filter(p => (Number(p.baseRate) || 5000) <= priceRange);
+        }
+
+        if (sortBy === 'Highest Rated') {
+            result.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+        } else if (sortBy === 'Lowest Price') {
+            result.sort((a, b) => (Number(a.baseRate) || 5000) - (Number(b.baseRate) || 5000));
+        }
+
+        setFilteredProviders(result);
+    };
+
+    useEffect(() => {
+        handleApplyFilters();
+    }, [providers, sortBy, searchQuery]);
 
     const handleCategoryChange = (category) => {
         setSelectedCategory(prev => prev === category ? 'All' : category);
@@ -80,6 +116,8 @@ const BrowseProviders = () => {
                                         className="block w-full rounded-lg border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm focus:border-green-600 focus:ring-green-600 focus:bg-white transition-colors outline-none shadow-sm border" 
                                         placeholder="Search providers..." 
                                         type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
                                     />
                                 </div>
 
@@ -114,7 +152,8 @@ const BrowseProviders = () => {
                                                         name="rating" 
                                                         type="radio" 
                                                         className="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer"
-                                                        defaultChecked={rating === 4} 
+                                                        checked={selectedRating === rating}
+                                                        onChange={() => setSelectedRating(rating)} 
                                                     />
                                                     <div className="ml-3 flex items-center">
                                                         <div className="flex text-yellow-400">
@@ -165,7 +204,10 @@ const BrowseProviders = () => {
                                         </div>
                                     </div>
 
-                                    <button className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all">
+                                    <button 
+                                        className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all"
+                                        onClick={handleApplyFilters}
+                                    >
                                         Apply Filters
                                     </button>
                                 </div>
@@ -174,10 +216,14 @@ const BrowseProviders = () => {
                             {/* Main Content */}
                             <div className="flex-1">
                                 <div className="mb-6 flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:bg-transparent lg:p-0 lg:border-0 lg:shadow-none">
-                                    <span className="text-sm font-medium text-gray-700">Showing <span className="text-green-700 font-bold">{providers.length}</span> results</span>
+                                    <span className="text-sm font-medium text-gray-700">Showing <span className="text-green-700 font-bold">{filteredProviders.length}</span> results</span>
                                     <div className="flex items-center gap-2" id="tour-sort-options">
                                         <span className="hidden sm:inline text-sm text-gray-500">Sort by:</span>
-                                        <select className="rounded-lg border-gray-200 bg-gray-50 py-1.5 pl-3 pr-8 text-sm focus:border-green-600 focus:ring-green-600 cursor-pointer outline-none">
+                                        <select 
+                                            className="rounded-lg border-gray-200 bg-gray-50 py-1.5 pl-3 pr-8 text-sm focus:border-green-600 focus:ring-green-600 cursor-pointer outline-none"
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                        >
                                             <option>Recommended</option>
                                             <option>Highest Rated</option>
                                             <option>Lowest Price</option>
@@ -191,14 +237,14 @@ const BrowseProviders = () => {
                                             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
                                             <p className="mt-4 text-gray-500">Finding taskers near you...</p>
                                         </div>
-                                    ) : providers.length === 0 ? (
+                                    ) : filteredProviders.length === 0 ? (
                                         <div className="col-span-full py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                                             <span className="material-icons-outlined text-4xl text-gray-300 mb-2">person_off</span>
                                             <h3 className="text-lg font-bold text-gray-900">No providers found</h3>
                                             <p className="text-gray-500">Try adjusting your filters or search for something else.</p>
                                         </div>
                                     ) : (
-                                        providers.map((provider) => (
+                                        filteredProviders.map((provider) => (
                                         <div key={provider.id} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
                                             <button 
                                                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-all active:scale-95"

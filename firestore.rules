@@ -32,7 +32,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin() || isAuthenticated(); // Allow auth users to leave reviews
       allow delete: if isAdmin(); // Only admins can delete users
     }
 

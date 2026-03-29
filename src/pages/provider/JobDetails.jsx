@@ -36,6 +36,28 @@ const JobDetails = () => {
     const [job, setJob] = useState(null);
     const [customerProfile, setCustomerProfile] = useState(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportDetails, setReportDetails] = useState("");
+
+    const handleReportIssue = async () => {
+        if (!reportDetails.trim()) {
+            toast.error("Please provide details of the issue");
+            return;
+        }
+        try {
+            const requestRef = doc(db, "requests", id);
+            await updateDoc(requestRef, {
+                hasProviderIssue: true,
+                providerIssueDetails: reportDetails,
+                updatedAt: new Date()
+            });
+            toast.success("Issue reported to admin successfully");
+            setIsReportModalOpen(false);
+        } catch (error) {
+            console.error("Error reporting issue:", error);
+            toast.error("Failed to report issue");
+        }
+    };
 
     useEffect(() => {
         if (!id) return;
@@ -493,7 +515,10 @@ const JobDetails = () => {
                                     )}
 
                                     {job.statusCode !== 'completed' && (
-                                        <button className="w-full py-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors font-medium text-sm mt-2">
+                                        <button 
+                                            onClick={() => setIsReportModalOpen(true)}
+                                            className="w-full py-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors font-medium text-sm mt-2"
+                                        >
                                             Report Issue
                                         </button>
                                     )}
@@ -553,6 +578,38 @@ const JobDetails = () => {
                                     Close
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Issue Modal */}
+            {isReportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
+                        <button onClick={() => setIsReportModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <span className="material-icons-outlined">close</span>
+                        </button>
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                                <span className="material-icons-outlined">report</span>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900">Report an Issue</h2>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">Please describe the issue you are experiencing with this job or customer.</p>
+                        <textarea
+                            className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600 mb-4 min-h-[120px]"
+                            placeholder="Describe the issue in detail..."
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                        />
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setIsReportModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100">
+                                Cancel
+                            </button>
+                            <button onClick={handleReportIssue} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
+                                Submit Report
+                            </button>
                         </div>
                     </div>
                 </div>

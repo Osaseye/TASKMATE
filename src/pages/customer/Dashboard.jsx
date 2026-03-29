@@ -22,6 +22,15 @@ const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('All');
     const [openDropdown, setOpenDropdown] = useState(null);
     const [recommendedProviders, setRecommendedProviders] = useState([]);
+    const scrollRef = React.useRef(null);
+
+    const scrollLeft = () => {
+        if (scrollRef.current) scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    };
+
+    const scrollRight = () => {
+        if (scrollRef.current) scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    };
 
     useEffect(() => {
         const fetchRecommended = async () => {
@@ -281,7 +290,12 @@ const Dashboard = () => {
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="font-bold text-gray-900">Recent Activity</h3>
-                                        <button className="text-xs font-semibold text-green-700 hover:underline">View All</button>
+                                        <button 
+                                            onClick={() => navigate('/customer/requests')} 
+                                            className="text-xs font-semibold text-green-700 hover:underline"
+                                        >
+                                            View All
+                                        </button>
                                     </div>
                                     <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-5 before:w-0.5 before:bg-gray-100">
                                         {recentActivity.length > 0 ? (
@@ -342,19 +356,23 @@ const Dashboard = () => {
                                     <p className="text-sm text-gray-500">Top rated providers in your area</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all">
+                                    <button onClick={scrollLeft} className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all md:hidden">
                                         <span className="material-icons-outlined text-lg">chevron_left</span>
                                     </button>
-                                    <button className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all">
+                                    <button onClick={scrollRight} className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all md:hidden">
                                         <span className="material-icons-outlined text-lg">chevron_right</span>
                                     </button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div 
+                                ref={scrollRef}
+                                className="flex overflow-x-auto gap-6 pb-4 snap-x hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-4"
+                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                            >
                                 {/* Card Template */}
                                 {recommendedProviders.length > 0 ? (
                                     recommendedProviders.map((provider) => (
-                                    <Link to={`/customer/provider/${provider.id}`} key={provider.id} className="group bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                                    <Link to={`/customer/provider/${provider.id}`} key={provider.id} className="min-w-[280px] md:min-w-0 snap-start shrink-0 group bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                                         <div className="flex items-start justify-between mb-4">
                                              <div className="relative">
                                                 <img src={provider.photoURL || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`} alt={provider.displayName} className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm" />

@@ -44,6 +44,53 @@ const RequestStatus = () => {
         return () => unsubscribe();
     }, [id]);
 
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [reportDetails, setReportDetails] = useState("");
+
+    const handleCancelRequest = async () => {
+        if (!cancelReason.trim()) {
+            toast.error("Please provide a reason for cancellation");
+            return;
+        }
+        try {
+            const requestRef = doc(db, "requests", id);
+            await updateDoc(requestRef, {
+                status: 'Cancelled',
+                cancelReason: cancelReason,
+                updatedAt: new Date()
+            });
+            toast.success("Request cancelled successfully");
+            setIsCancelModalOpen(false);
+            window.location.reload(); // Refresh to get updated status
+        } catch (error) {
+            console.error("Error cancelling request:", error);
+            toast.error("Failed to cancel request");
+        }
+    };
+
+    const handleReportIssue = async () => {
+        if (!reportDetails.trim()) {
+            toast.error("Please provide details of the issue");
+            return;
+        }
+        try {
+            const requestRef = doc(db, "requests", id);
+            // Optionally store reports in a separate collection, but for now we embed or add a field
+            await updateDoc(requestRef, {
+                hasIssue: true,
+                issueDetails: reportDetails,
+                updatedAt: new Date()
+            });
+            toast.success("Issue reported to admin successfully");
+            setIsReportModalOpen(false);
+        } catch (error) {
+            console.error("Error reporting issue:", error);
+            toast.error("Failed to report issue");
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -143,11 +190,15 @@ const RequestStatus = () => {
                                         </button>
                                     ) : (
                                         <>
-                                            <button className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
+                                            <button 
+                                                onClick={() => setIsReportModalOpen(true)}
+                                                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
                                                 Report Issue
                                             </button>
                                             {request.status !== 'Completed' && request.status !== 'Cancelled' && request.status !== 'Declined' && request.status !== 'Rejected' && (
-                                                <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
+                                                <button 
+                                                    onClick={() => setIsCancelModalOpen(true)}
+                                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" type="button">
                                                     Cancel Request
                                                 </button>
                                             )}
@@ -318,6 +369,71 @@ const RequestStatus = () => {
                 </div>
                 <MobileNavBar />
             </main>
+
+            {/* Cancel Request Modal */}
+            {isCancelModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
+                        <button onClick={() => setIsCancelModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <span className="material-icons-outlined">close</span>
+                        </button>
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                                <span className="material-icons-outlined">cancel</span>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900">Cancel Request</h2>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">Please let us know why you are cancelling this request. This action cannot be undone.</p>
+                        <textarea
+                            className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600 mb-4 min-h-[100px]"
+                            placeholder="Reason for cancellation..."
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                        />
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setIsCancelModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100">
+                                Keep Request
+                            </button>
+                            <button onClick={handleCancelRequest} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
+                                Yes, Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Issue Modal */}
+            {isReportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
+                        <button onClick={() => setIsReportModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <span className="material-icons-outlined">close</span>
+                        </button>
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                                <span className="material-icons-outlined">report_problem</span>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900">Report an Issue</h2>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">Please describe the issue you're experiencing with this request. Our support team will review it shortly.</p>
+                        <textarea
+                            className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600 mb-4 min-h-[120px]"
+                            placeholder="Describe the issue in detail..."
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                        />
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setIsReportModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100">
+                                Dismiss
+                            </button>
+                            <button onClick={handleReportIssue} className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700">
+                                Submit Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
